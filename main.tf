@@ -1,41 +1,92 @@
-# Resource Group
+# Data source for existing resource group
+data "azurerm_resource_group" "existing" {
+  count = var.create_resource_group ? 0 : 1
+  name  = var.existing_resource_group_name
+}
+
+# Resource Group - Create new or use existing
 resource "azurerm_resource_group" "main" {
+  count    = var.create_resource_group ? 1 : 0
   name     = "${var.resource_prefix}-rg"
   location = var.location
   tags     = var.tags
 }
 
-# Virtual Network
+# Local values to reference the correct resource group
+locals {
+  resource_group_name = var.create_resource_group ? azurerm_resource_group.main[0].name : data.azurerm_resource_group.existing[0].name
+  resource_group_location = var.create_resource_group ? azurerm_resource_group.main[0].location : data.azurerm_resource_group.existing[0].location
+  vnet_resource_group_name = var.existing_vnet_resource_group_name != "" ? var.existing_vnet_resource_group_name : local.resource_group_name
+}
+
+# Data source for existing VNet
+data "azurerm_virtual_network" "existing" {
+  count               = var.create_vnet ? 0 : 1
+  name                = var.existing_vnet_name
+  resource_group_name = local.vnet_resource_group_name
+}
+
+# Virtual Network - Create new or use existing
 resource "azurerm_virtual_network" "main" {
+  count               = var.create_vnet ? 1 : 0
   name                = "${var.resource_prefix}-vnet"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = local.resource_group_location
+  resource_group_name = local.resource_group_name
   address_space       = var.vnet_address_space
   tags                = var.tags
 }
 
-# Subnet for Application Gateway
+# Local values to reference the correct VNet
+locals {
+  vnet_name = var.create_vnet ? azurerm_virtual_network.main[0].name : data.azurerm_virtual_network.existing[0].name
+  vnet_id   = var.create_vnet ? azurerm_virtual_network.main[0].id : data.azurerm_virtual_network.existing[0].id
+}
+
+# Data sources for existing subnets
+data "azurerm_subnet" "existing_appgw" {
+  count                = var.create_subnets ? 0 : 1
+  name                 = var.existing_appgw_subnet_name
+  virtual_network_name = local.vnet_name
+  resource_group_name  = local.vnet_resource_group_name
+}
+
+data "azurerm_subnet" "existing_backend" {
+  count                = var.create_subnets ? 0 : 1
+  name                 = var.existing_backend_subnet_name
+  virtual_network_name = local.vnet_name
+  resource_group_name  = local.vnet_resource_group_name
+}
+
+# Subnet for Application Gateway - Create new or use existing
 resource "azurerm_subnet" "appgw" {
+  count                                         = var.create_subnets ? 1 : 0
   name                                          = "${var.resource_prefix}-appgw-subnet"
-  resource_group_name                           = azurerm_resource_group.main.name
-  virtual_network_name                          = azurerm_virtual_network.main.name
+  resource_group_name                           = local.vnet_resource_group_name
+  virtual_network_name                          = local.vnet_name
   address_prefixes                              = [var.appgw_subnet_prefix]
   private_link_service_network_policies_enabled = false
 }
 
-# Subnet for backend resources (IBM MQ, etc.)
+# Subnet for backend resources (IBM MQ, etc.) - Create new or use existing
 resource "azurerm_subnet" "backend" {
+  count                = var.create_subnets ? 1 : 0
   name                 = "${var.resource_prefix}-backend-subnet"
-  resource_group_name  = azurerm_resource_group.main.name
-  virtual_network_name = azurerm_virtual_network.main.name
+  resource_group_name  = local.vnet_resource_group_name
+  virtual_network_name = local.vnet_name
   address_prefixes     = [var.backend_subnet_prefix]
+}
+
+# Local values to reference the correct subnets
+locals {
+  appgw_subnet_id   = var.create_subnets ? azurerm_subnet.appgw[0].id : data.azurerm_subnet.existing_appgw[0].id
+  backend_subnet_id = var.create_subnets ? azurerm_subnet.backend[0].id : data.azurerm_subnet.existing_backend[0].id
 }
 
 # Network Security Group for Application Gateway subnet
 resource "azurerm_network_security_group" "appgw" {
   name                = "${var.resource_prefix}-appgw-nsg"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = local.resource_group_location
+  resource_group_name = local.resource_group_name
   tags                = var.tags
 
   # Allow inbound traffic from GatewayManager
@@ -51,23 +102,10 @@ resource "azurerm_network_security_group" "appgw" {
     destination_address_prefix = "*"
   }
 
-  # Allow inbound IBM MQ
-  security_rule {
-    name                       = "AllowIBMMQ"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "1414"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
   # Allow Azure Load Balancer
   security_rule {
     name                       = "AllowAzureLoadBalancer"
-    priority                   = 130
+    priority                   = 110
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "*"
@@ -76,19 +114,32 @@ resource "azurerm_network_security_group" "appgw" {
     source_address_prefix      = "AzureLoadBalancer"
     destination_address_prefix = "*"
   }
+
+  # Deny all other inbound traffic to public IP
+  security_rule {
+    name                       = "DenyAllInbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 }
 
 # Associate NSG with Application Gateway subnet
 resource "azurerm_subnet_network_security_group_association" "appgw" {
-  subnet_id                 = azurerm_subnet.appgw.id
+  subnet_id                 = local.appgw_subnet_id
   network_security_group_id = azurerm_network_security_group.appgw.id
 }
 
 # Public IP for Application Gateway
 resource "azurerm_public_ip" "appgw" {
   name                = "${var.resource_prefix}-appgw-pip"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = local.resource_group_location
+  resource_group_name = local.resource_group_name
   allocation_method   = "Static"
   sku                 = "Standard"
   tags                = var.tags
@@ -97,8 +148,8 @@ resource "azurerm_public_ip" "appgw" {
 # Application Gateway with TCP support for IBM MQ
 resource "azurerm_application_gateway" "main" {
   name                = "${var.resource_prefix}-appgw"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = local.resource_group_location
+  resource_group_name = local.resource_group_name
   tags                = var.tags
 
   sku {
@@ -109,7 +160,7 @@ resource "azurerm_application_gateway" "main" {
 
   gateway_ip_configuration {
     name      = "appgw-ip-config"
-    subnet_id = azurerm_subnet.appgw.id
+    subnet_id = local.appgw_subnet_id
   }
 
   # Frontend configuration for public access
@@ -121,7 +172,7 @@ resource "azurerm_application_gateway" "main" {
   # Frontend configuration for Private Link (Confluent Cloud)
   frontend_ip_configuration {
     name                          = "appgw-frontend-private"
-    subnet_id                     = azurerm_subnet.appgw.id
+    subnet_id                     = local.appgw_subnet_id
     private_ip_address            = cidrhost(var.appgw_subnet_prefix, 10)
     private_ip_address_allocation = "Static"
     private_link_configuration_name = "private-link-config"
@@ -176,14 +227,6 @@ resource "azurerm_application_gateway" "main" {
     protocol                       = "Http"
   }
 
-  # Listener on public frontend (for testing)
-  http_listener {
-    name                           = "ibm-mq-public-listener"
-    frontend_ip_configuration_name = "appgw-frontend-public"
-    frontend_port_name             = "ibm-mq-port"
-    protocol                       = "Http"
-  }
-
   # Routing rule from private listener to IBM MQ backend
   request_routing_rule {
     name                       = "ibm-mq-private-routing-rule"
@@ -194,23 +237,13 @@ resource "azurerm_application_gateway" "main" {
     priority                   = 100
   }
 
-  # Routing rule from public listener to IBM MQ backend
-  request_routing_rule {
-    name                       = "ibm-mq-public-routing-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "ibm-mq-public-listener"
-    backend_address_pool_name  = "ibm-mq-backend-pool"
-    backend_http_settings_name = "ibm-mq-backend-settings"
-    priority                   = 110
-  }
-
   # Private Link configuration for Confluent Cloud
   private_link_configuration {
     name = "private-link-config"
 
     ip_configuration {
       name                          = "private-link-ip-config"
-      subnet_id                     = azurerm_subnet.appgw.id
+      subnet_id                     = local.appgw_subnet_id
       private_ip_address_allocation = "Dynamic"
       primary                       = true
     }
