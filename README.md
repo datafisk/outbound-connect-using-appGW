@@ -138,7 +138,7 @@ See [SETUP.md](SETUP.md) for detailed deployment and configuration instructions.
 
 ## Example Connector
 
-Included example: **IBM MQ Source Connector** that reads messages from IBM MQ and publishes to Kafka topics via Private Link.
+Included example: **IBM MQ Source Connector** that consumes messages from IBM MQ over Private Link (via Application Gateway) and produces to Kafka topics.
 
 ### Connector Configuration
 
@@ -153,7 +153,7 @@ All MQ and JMS parameters are configurable via environment variables for securit
 
 ## Cost Estimate
 
-- Application Gateway Standard_v2: ~$180-220/month (2 instances)
+- Application Gateway Standard_v2: ~$90-110/month (1 instance, configurable via capacity parameter)
 - Private Link Service: Minimal cost
 - Data transfer: Based on usage
 
