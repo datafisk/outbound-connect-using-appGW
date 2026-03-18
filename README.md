@@ -151,6 +151,8 @@ All MQ and JMS parameters are configurable via environment variables for securit
 
 **Note**: MQ credentials (username/password) are optional. If your IBM MQ server is configured to allow unauthenticated connections, you can leave these empty in the configuration. This is acceptable when relying on network-level security (Private Link, NSG, VPN), though using credentials provides defense-in-depth.
 
+**SSL/TLS Support**: The connector supports custom keystore and truststore configuration for SSL/TLS connections to IBM MQ. Configure cipher suite, keystore location, and truststore settings in the environment file as needed.
+
 ## Cost Estimate
 
 - Application Gateway Standard_v2: ~$90-110/month (1 instance, configurable via capacity parameter)
