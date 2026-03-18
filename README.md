@@ -139,6 +139,23 @@ See [SETUP.md](SETUP.md) for detailed deployment and configuration instructions.
 
 Included example: **IBM MQ Source Connector** that consumes messages from IBM MQ over Private Link (via Application Gateway) and produces to Kafka topics.
 
+### IBM MQ Requirements
+
+For the example configuration to work, your IBM MQ server must be configured with:
+
+- **Port**: `1414` (standard IBM MQ listener port)
+- **Queue Manager**: Named `QM1` (or update `MQ_QUEUE_MANAGER` in config)
+- **Server Connection Channel**: Named `DEV.APP.SVRCONN` (or update `MQ_CHANNEL` in config)
+- **Queue**: Named `DEV.QUEUE.1` (or update `JMS_DESTINATION_NAME` in config)
+- **Transport Mode**: Client mode enabled
+- **Network Access**: Reachable from the Application Gateway backend pool targets
+- **Authentication**: Optional - can be configured for unauthenticated or authenticated access
+  - If using authentication, configure username/password in the connector
+  - If using unauthenticated, ensure the channel's MCAUSER is set appropriately
+- **SSL/TLS**: Optional - configure cipher suite and keystores if required
+
+**Note**: All these values are configurable via the `ibm-mq-source.env` file. The defaults match IBM MQ Developer edition out-of-the-box settings.
+
 ### Connector Configuration
 
 The connector uses a variable-based configuration system:
