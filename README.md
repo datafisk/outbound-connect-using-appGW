@@ -205,7 +205,36 @@ keytool -export -alias client-key \
   -storepass your-keystore-password
 ```
 
-#### 3. Configure in `ibm-mq-source.env`
+#### 3. Configure IBM MQ Server for SSL/TLS
+
+On the IBM MQ server, import the client certificate and configure the channel:
+
+```bash
+# Create MQ key database (if not exists)
+runmqakm -keydb -create -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
+  -pw your-mq-keydb-password -type cms -stash
+
+# Import the client certificate into MQ's key database
+runmqakm -cert -add -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
+  -stashed -label confluent-client \
+  -file /path/to/client-cert.pem -format ascii
+
+# Configure the server connection channel for SSL/TLS
+runmqsc QM1 << EOF
+ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCIPH(TLS_RSA_WITH_AES_128_CBC_SHA256)
+ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCAUTH(OPTIONAL)
+REFRESH SECURITY TYPE(SSL)
+EOF
+```
+
+**Notes**:
+- Adjust paths according to your MQ installation
+- `SSLCAUTH(OPTIONAL)` allows connections with or without client certificates
+- Use `SSLCAUTH(REQUIRED)` to enforce mutual TLS
+- The cipher spec name may differ slightly between MQ and Java (e.g., `TLS_RSA_WITH_AES_128_CBC_SHA256`)
+- Restart the queue manager after SSL configuration changes
+
+#### 4. Configure in `ibm-mq-source.env`
 
 ```bash
 MQ_SSL_CIPHER_SUITE=TLS_RSA_WITH_AES_128_CBC_SHA256
