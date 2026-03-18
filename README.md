@@ -110,7 +110,6 @@ existing_vnet_name = "my-vnet"
 
 create_subnets = false
 existing_appgw_subnet_name = "appgw-subnet"
-existing_backend_subnet_name = "backend-subnet"
 ```
 
 See [EXISTING-RESOURCES.md](EXISTING-RESOURCES.md) for complete guide including requirements and validation steps.

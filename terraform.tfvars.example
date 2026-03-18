@@ -11,9 +11,8 @@ create_resource_group = true
 create_vnet           = true
 create_subnets        = true
 
-vnet_address_space    = ["10.0.0.0/16"]
-appgw_subnet_prefix   = "10.0.1.0/24"
-backend_subnet_prefix = "10.0.2.0/24"
+vnet_address_space  = ["10.0.0.0/16"]
+appgw_subnet_prefix = "10.0.1.0/24"
 
 # ===================================================================
 # Option 2: Use existing resource group, VNet, and/or subnets
@@ -29,10 +28,9 @@ backend_subnet_prefix = "10.0.2.0/24"
 # existing_vnet_name                 = "my-existing-vnet"
 # existing_vnet_resource_group_name  = "my-vnet-rg"  # If VNet is in different RG
 
-# Use existing subnets
-# create_subnets                = false
-# existing_appgw_subnet_name    = "appgw-subnet"
-# existing_backend_subnet_name  = "backend-subnet"
+# Use existing subnet
+# create_subnets             = false
+# existing_appgw_subnet_name = "appgw-subnet"
 # Note: Existing AppGW subnet must have private_link_service_network_policies_enabled = false
 
 # IBM MQ Backend Configuration

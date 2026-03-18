@@ -33,11 +33,6 @@ output "application_gateway_private_ip" {
   value       = cidrhost(var.appgw_subnet_prefix, 10)
 }
 
-output "backend_subnet_id" {
-  description = "ID of the backend subnet for placing IBM MQ and other backend resources"
-  value       = local.backend_subnet_id
-}
-
 output "application_gateway_private_link_configuration_id" {
   description = "Private Link Configuration ID of the Application Gateway"
   value       = "${azurerm_application_gateway.main.id}/privateLinkConfigurations/private-link-config"

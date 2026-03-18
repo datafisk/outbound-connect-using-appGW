@@ -7,7 +7,7 @@ This guide explains how to deploy the Application Gateway and Confluent Cloud in
 By default, this Terraform configuration creates:
 - ✓ New Resource Group
 - ✓ New Virtual Network
-- ✓ New Subnets (Application Gateway + Backend)
+- ✓ New Subnet (Application Gateway)
 
 However, you can configure it to use existing resources instead. This is useful when:
 - You have existing network infrastructure
@@ -34,13 +34,12 @@ existing_vnet_name                 = "my-existing-vnet"
 existing_vnet_resource_group_name  = "my-vnet-rg"  # Optional, if VNet is in different RG
 ```
 
-### Option 3: Use Existing Subnets
+### Option 3: Use Existing Subnet
 
 ```hcl
 # terraform.tfvars
-create_subnets               = false
-existing_appgw_subnet_name   = "appgw-subnet"
-existing_backend_subnet_name = "backend-subnet"
+create_subnets             = false
+existing_appgw_subnet_name = "appgw-subnet"
 ```
 
 **Important:** The Application Gateway subnet must have:
@@ -51,7 +50,7 @@ private_link_service_network_policies_enabled = false
 ### Mix and Match
 
 You can combine options. For example:
-- Use existing VNet but create new subnets
+- Use existing VNet but create new subnet
 - Use existing Resource Group but create new VNet
 - Use all existing resources
 
@@ -69,14 +68,12 @@ create_vnet                        = false
 existing_vnet_name                 = "hub-vnet"
 existing_vnet_resource_group_name  = "network-rg"
 
-# Use existing Subnets
-create_subnets               = false
-existing_appgw_subnet_name   = "application-gateway-subnet"
-existing_backend_subnet_name = "applications-subnet"
+# Use existing Subnet
+create_subnets             = false
+existing_appgw_subnet_name = "application-gateway-subnet"
 
-# Still need to specify these for Application Gateway configuration
-appgw_subnet_prefix   = "10.1.5.0/24"  # Must match actual subnet CIDR
-backend_subnet_prefix = "10.1.6.0/24"  # For reference only
+# Still need to specify this for Application Gateway configuration
+appgw_subnet_prefix = "10.1.5.0/24"  # Must match actual subnet CIDR
 
 # Rest of configuration...
 location        = "westeurope"
@@ -112,13 +109,6 @@ az network vnet subnet update \
   --private-link-service-network-policies-enabled false
 ```
 
-### Backend Subnet
-
-**Minimum Requirements:**
-- Subnet size: Depends on your backend resources
-- Can be shared with other resources
-- Should have network connectivity to your backend services (IBM MQ, databases, etc.)
-
 ## Network Security Groups
 
 This Terraform configuration creates an NSG for the Application Gateway subnet with required rules:
@@ -126,7 +116,7 @@ This Terraform configuration creates an NSG for the Application Gateway subnet w
 - Allow AzureLoadBalancer
 - Deny all other inbound traffic
 
-**If using existing subnets with existing NSGs:**
+**If using an existing subnet with existing NSG:**
 - The Terraform NSG will be created and associated with the AppGW subnet
 - This will replace any existing NSG association
 - To prevent this, comment out the NSG resources in `main.tf` and ensure your existing NSG has the required rules
@@ -148,19 +138,13 @@ az network vnet show \
   --query '{name:name, addressSpace:addressSpace, location:location}'
 ```
 
-### 3. Check Subnets
+### 3. Check Subnet
 ```bash
 # Application Gateway subnet
 az network vnet subnet show \
   --resource-group network-rg \
   --vnet-name hub-vnet \
   --name application-gateway-subnet
-
-# Backend subnet
-az network vnet subnet show \
-  --resource-group network-rg \
-  --vnet-name hub-vnet \
-  --name applications-subnet
 ```
 
 ### 4. Validate Terraform Plan
@@ -207,19 +191,15 @@ Look for:
    - Network RG (long-lived)
    - Application RG (may be recreated)
 
-2. **Document subnet allocations** when using shared VNets
-   - Reserve IP ranges for specific purposes
-   - Avoid overlapping address space
-
-3. **Test with create_* = true first**
+2. **Test with create_* = true first**
    - Deploy to a test environment with new resources
    - Once validated, migrate to existing resources
 
-4. **Keep NSG rules centralized** if using existing NSGs
+3. **Keep NSG rules centralized** if using existing NSG
    - Document the required App Gateway rules
-   - Consider using Terraform to manage the NSG even if using existing subnets
+   - Consider using Terraform to manage the NSG even if using existing subnet
 
-5. **Use tags** to identify resources
+4. **Use tags** to identify resources
    - Even with existing resources, tag the App Gateway and Public IP
    - Helps with cost tracking and resource management
 

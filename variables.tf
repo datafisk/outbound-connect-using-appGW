@@ -61,22 +61,10 @@ variable "existing_appgw_subnet_name" {
   default     = ""
 }
 
-variable "existing_backend_subnet_name" {
-  description = "Name of existing backend subnet (if create_subnets is false)"
-  type        = string
-  default     = ""
-}
-
 variable "appgw_subnet_prefix" {
   description = "Address prefix for Application Gateway subnet (only used if create_subnets is true)"
   type        = string
   default     = "10.0.1.0/24"
-}
-
-variable "backend_subnet_prefix" {
-  description = "Address prefix for backend resources subnet (only used if create_subnets is true)"
-  type        = string
-  default     = "10.0.2.0/24"
 }
 
 variable "tags" {
