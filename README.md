@@ -149,6 +149,8 @@ The connector uses a variable-based configuration system:
 
 All MQ and JMS parameters are configurable via environment variables for security and flexibility.
 
+**Note**: MQ credentials (username/password) are optional. If your IBM MQ server is configured to allow unauthenticated connections, you can leave these empty in the configuration. This is acceptable when relying on network-level security (Private Link, NSG, VPN), though using credentials provides defense-in-depth.
+
 ## Cost Estimate
 
 - Application Gateway Standard_v2: ~$180-220/month (2 instances)

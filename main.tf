@@ -115,16 +115,16 @@ resource "azurerm_network_security_group" "appgw" {
     destination_address_prefix = "*"
   }
 
-  # Deny all other inbound traffic to public IP
+  # Allow inbound traffic on listener port for Private Link
   security_rule {
-    name                       = "DenyAllInbound"
-    priority                   = 4096
+    name                       = "AllowPrivateLinkListener"
+    priority                   = 120
     direction                  = "Inbound"
-    access                     = "Deny"
-    protocol                   = "*"
+    access                     = "Allow"
+    protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "*"
+    destination_port_range     = var.ibm_mq_frontend_port
+    source_address_prefix      = "VirtualNetwork"
     destination_address_prefix = "*"
   }
 }

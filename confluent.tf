@@ -1,13 +1,4 @@
 # Confluent Cloud Provider Configuration
-terraform {
-  required_providers {
-    confluent = {
-      source  = "confluentinc/confluent"
-      version = "~> 1.0"
-    }
-  }
-}
-
 provider "confluent" {
   cloud_api_key    = var.confluent_cloud_api_key
   cloud_api_secret = var.confluent_cloud_api_secret
@@ -69,10 +60,6 @@ resource "confluent_private_link_attachment" "appgw" {
   environment {
     id = data.confluent_environment.main.id
   }
-
-  azure {
-    subscription_id = var.azure_subscription_id
-  }
 }
 
 # Local values to reference the correct private link attachment
@@ -80,23 +67,51 @@ locals {
   private_link_attachment_id = var.create_private_link_attachment ? confluent_private_link_attachment.appgw[0].id : data.confluent_private_link_attachment.existing[0].id
 }
 
-# Egress Endpoint to Application Gateway Private Link
-resource "confluent_private_link_attachment_connection" "appgw" {
-  display_name = "${var.resource_prefix}-appgw-connection"
+# Egress Access Point - Azure Private Link to Application Gateway
+# Uses the gateway from the existing Confluent network
+resource "confluent_access_point" "appgw_egress" {
+  display_name = "${var.resource_prefix}-appgw-egress"
 
   environment {
     id = data.confluent_environment.main.id
   }
 
-  private_link_attachment {
-    id = local.private_link_attachment_id
+  gateway {
+    # Use the gateway ID from the existing network
+    id = data.confluent_network.existing[0].gateway[0].id
   }
 
-  azure {
+  azure_egress_private_link_endpoint {
     private_link_service_resource_id = azurerm_application_gateway.main.id
+    # For Application Gateway, the subresource must be the private frontend IP configuration
+    private_link_subresource_name = "appgw-frontend-private"
   }
 
   depends_on = [
-    azurerm_application_gateway.main
+    azurerm_application_gateway.main,
+    confluent_private_link_attachment.appgw
+  ]
+}
+
+# DNS Record for Egress Access Point (optional)
+resource "confluent_dns_record" "appgw_egress" {
+  count        = var.create_dns_record ? 1 : 0
+  display_name = "${var.resource_prefix}-appgw-dns"
+  domain       = var.dns_domain
+
+  environment {
+    id = data.confluent_environment.main.id
+  }
+
+  gateway {
+    id = data.confluent_network.existing[0].gateway[0].id
+  }
+
+  private_link_access_point {
+    id = confluent_access_point.appgw_egress.id
+  }
+
+  depends_on = [
+    confluent_access_point.appgw_egress
   ]
 }

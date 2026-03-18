@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.15"
     }
+    confluent = {
+      source  = "confluentinc/confluent"
+      version = "~> 1.0"
+    }
   }
 }
 
