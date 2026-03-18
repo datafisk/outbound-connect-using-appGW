@@ -173,6 +173,57 @@ All MQ and JMS parameters are configurable via environment variables for securit
 
 **SSL/TLS Support**: The connector supports custom keystore and truststore configuration for SSL/TLS connections to IBM MQ. Configure cipher suite, keystore location, and truststore settings in the environment file as needed.
 
+### Generating SSL/TLS Keystores (Optional)
+
+If your IBM MQ server requires SSL/TLS, you'll need to generate keystore and truststore files. Here's how:
+
+#### 1. Create a Truststore (for IBM MQ server certificate)
+
+```bash
+# Import the IBM MQ server's certificate into a truststore
+keytool -import -trustcacerts -alias ibm-mq-server \
+  -file /path/to/mq-server-cert.pem \
+  -keystore truststore.jks \
+  -storepass your-truststore-password
+```
+
+#### 2. Create a Keystore (if mutual TLS is required)
+
+```bash
+# Generate a key pair
+keytool -genkeypair -alias client-key \
+  -keyalg RSA -keysize 2048 \
+  -validity 365 \
+  -keystore keystore.jks \
+  -storepass your-keystore-password \
+  -dname "CN=confluent-connector,OU=IT,O=YourOrg,L=City,ST=State,C=US"
+
+# Export the certificate (to provide to IBM MQ admin)
+keytool -export -alias client-key \
+  -file client-cert.pem \
+  -keystore keystore.jks \
+  -storepass your-keystore-password
+```
+
+#### 3. Configure in `ibm-mq-source.env`
+
+```bash
+MQ_SSL_CIPHER_SUITE=TLS_RSA_WITH_AES_128_CBC_SHA256
+MQ_SSL_KEYSTORE_LOCATION=/path/to/keystore.jks
+MQ_SSL_KEYSTORE_PASSWORD=your-keystore-password
+MQ_SSL_TRUSTSTORE_LOCATION=/path/to/truststore.jks
+MQ_SSL_TRUSTSTORE_PASSWORD=your-truststore-password
+```
+
+**Note**: The keystore/truststore files must be accessible to the Confluent Cloud connector. You may need to upload them as connector configuration files or use a supported secrets manager.
+
+**Common IBM MQ Cipher Suites**:
+- `TLS_RSA_WITH_AES_128_CBC_SHA256`
+- `TLS_RSA_WITH_AES_256_CBC_SHA256`
+- `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256`
+
+Consult your IBM MQ administrator for the correct cipher suite to use.
+
 ## Cost Estimate
 
 - Application Gateway Standard_v2: ~$90-110/month (1 instance, configurable via capacity parameter)
