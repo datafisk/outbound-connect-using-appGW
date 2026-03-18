@@ -177,10 +177,35 @@ All MQ and JMS parameters are configurable via environment variables for securit
 
 If your IBM MQ server requires SSL/TLS, you'll need to generate keystore and truststore files. Here's how:
 
-#### 1. Create a Truststore (for IBM MQ server certificate)
+#### 1. Create IBM MQ Server Certificate and Truststore
+
+**On the IBM MQ Server:**
+
+```bash
+# Create MQ key database (if not exists)
+runmqakm -keydb -create -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
+  -pw your-mq-keydb-password -type cms -stash
+
+# Create a self-signed certificate for the MQ server
+runmqakm -cert -create -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
+  -stashed -label ibmmqserver \
+  -dn "CN=mq-server.example.com,OU=IT,O=YourOrg,C=US" \
+  -size 2048 -expire 365
+
+# Export the server certificate (to import into connector truststore)
+runmqakm -cert -extract -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
+  -stashed -label ibmmqserver \
+  -target mq-server-cert.pem -format ascii
+
+# Configure the queue manager to use SSL
+# Add to qm.ini: CERTLABL=ibmmqserver
+```
+
+**On the Connector Side (create truststore):**
 
 ```bash
 # Import the IBM MQ server's certificate into a truststore
+# This allows the connector to trust the MQ server
 keytool -import -trustcacerts -alias ibm-mq-server \
   -file /path/to/mq-server-cert.pem \
   -keystore truststore.jks \
@@ -266,22 +291,18 @@ keytool -import -alias client-key \
   -storepass your-keystore-password
 ```
 
-#### 3. Configure IBM MQ Server for SSL/TLS
+#### 3. Configure IBM MQ Server for Mutual TLS (if required)
 
-On the IBM MQ server, import the CA certificate (not individual client certs) and configure the channel:
+If using mutual TLS authentication, import the CA certificate that signed the client certificates:
 
 ```bash
-# Create MQ key database (if not exists)
-runmqakm -keydb -create -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
-  -pw your-mq-keydb-password -type cms -stash
-
 # Import the CA certificate into MQ's key database
 # MQ will trust any client certificate signed by this CA
 runmqakm -cert -add -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
   -stashed -label ca-cert \
   -file /path/to/ca-cert.pem -format ascii
 
-# Configure the server connection channel for SSL/TLS
+# Configure the server connection channel for SSL/TLS with client authentication
 runmqsc QM1 << EOF
 ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCIPH(TLS_RSA_WITH_AES_128_CBC_SHA256)
 ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCAUTH(REQUIRED)
@@ -289,12 +310,24 @@ REFRESH SECURITY TYPE(SSL)
 EOF
 ```
 
+**For server-only SSL (no client certificate validation):**
+
+```bash
+# Configure the server connection channel for SSL/TLS without client authentication
+runmqsc QM1 << EOF
+ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCIPH(TLS_RSA_WITH_AES_128_CBC_SHA256)
+ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCAUTH(OPTIONAL)
+REFRESH SECURITY TYPE(SSL)
+EOF
+```
+
 **Notes**:
 - By importing the CA certificate, MQ trusts **all** client certificates signed by that CA
 - This is more scalable than importing individual client certificates
+- The MQ server certificate (created in step 1) uses label `ibmmqserver`
 - Adjust paths according to your MQ installation
 - `SSLCAUTH(REQUIRED)` enforces mutual TLS authentication
-- Use `SSLCAUTH(OPTIONAL)` to allow connections with or without client certificates
+- `SSLCAUTH(OPTIONAL)` allows connections with or without client certificates
 - The cipher spec name may differ slightly between MQ and Java
 - Restart the queue manager after SSL configuration changes
 
