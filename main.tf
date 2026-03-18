@@ -50,13 +50,6 @@ data "azurerm_subnet" "existing_appgw" {
   resource_group_name  = local.vnet_resource_group_name
 }
 
-data "azurerm_subnet" "existing_backend" {
-  count                = var.create_subnets ? 0 : 1
-  name                 = var.existing_backend_subnet_name
-  virtual_network_name = local.vnet_name
-  resource_group_name  = local.vnet_resource_group_name
-}
-
 # Subnet for Application Gateway - Create new or use existing
 resource "azurerm_subnet" "appgw" {
   count                                         = var.create_subnets ? 1 : 0
@@ -67,19 +60,9 @@ resource "azurerm_subnet" "appgw" {
   private_link_service_network_policies_enabled = false
 }
 
-# Subnet for backend resources (IBM MQ, etc.) - Create new or use existing
-resource "azurerm_subnet" "backend" {
-  count                = var.create_subnets ? 1 : 0
-  name                 = "${var.resource_prefix}-backend-subnet"
-  resource_group_name  = local.vnet_resource_group_name
-  virtual_network_name = local.vnet_name
-  address_prefixes     = [var.backend_subnet_prefix]
-}
-
-# Local values to reference the correct subnets
+# Local values to reference the correct subnet
 locals {
-  appgw_subnet_id   = var.create_subnets ? azurerm_subnet.appgw[0].id : data.azurerm_subnet.existing_appgw[0].id
-  backend_subnet_id = var.create_subnets ? azurerm_subnet.backend[0].id : data.azurerm_subnet.existing_backend[0].id
+  appgw_subnet_id = var.create_subnets ? azurerm_subnet.appgw[0].id : data.azurerm_subnet.existing_appgw[0].id
 }
 
 # Network Security Group for Application Gateway subnet
