@@ -1,0 +1,37 @@
+{
+  "name": "ibm-mq-source-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.ibm.mq.IbmMQSourceConnector",
+    "kafka.auth.mode": "KAFKA_API_KEY",
+    "kafka.api.key": "${CONFLUENT_API_KEY}",
+    "kafka.api.secret": "${CONFLUENT_API_SECRET}",
+    "kafka.topic": "ibm-mq-messages",
+    "tasks.max": "1",
+
+    "mq.hostname": "${MQ_HOSTNAME}",
+    "mq.port": "${MQ_PORT}",
+    "mq.transport": "${MQ_TRANSPORT}",
+    "mq.queue.manager": "${MQ_QUEUE_MANAGER}",
+    "mq.channel": "${MQ_CHANNEL}",
+    "mq.username": "${MQ_USERNAME}",
+    "mq.password": "${MQ_PASSWORD}",
+
+    "jms.destination.name": "${JMS_DESTINATION_NAME}",
+    "jms.destination.type": "${JMS_DESTINATION_TYPE}",
+
+    "confluent.topic.bootstrap.servers": "${CONFLUENT_BOOTSTRAP_SERVERS}",
+    "confluent.topic.replication.factor": "3",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+
+    "output.data.format": "JSON",
+    "confluent.connector.type": "source",
+    "confluent.license": "",
+
+    "comment": "Replace mq.hostname with the private IP of your Application Gateway (from terraform output)",
+    "comment2": "The connector will route through the Private Link endpoint to reach the Application Gateway",
+    "comment3": "The Application Gateway will then forward traffic to your IBM MQ instance"
+  }
+}
