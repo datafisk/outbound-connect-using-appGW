@@ -1,16 +1,16 @@
 output "resource_group_name" {
   description = "Name of the resource group"
-  value       = azurerm_resource_group.main.name
+  value       = local.resource_group_name
 }
 
 output "vnet_id" {
   description = "ID of the virtual network"
-  value       = azurerm_virtual_network.main.id
+  value       = local.vnet_id
 }
 
 output "vnet_name" {
   description = "Name of the virtual network"
-  value       = azurerm_virtual_network.main.name
+  value       = local.vnet_name
 }
 
 output "application_gateway_id" {
@@ -35,7 +35,7 @@ output "application_gateway_private_ip" {
 
 output "backend_subnet_id" {
   description = "ID of the backend subnet for placing IBM MQ and other backend resources"
-  value       = azurerm_subnet.backend.id
+  value       = local.backend_subnet_id
 }
 
 output "application_gateway_private_link_configuration_id" {
@@ -52,54 +52,70 @@ output "ibm_mq_backend_pool" {
   }
 }
 
-output "confluent_connection_instructions" {
-  description = "Instructions for connecting from Confluent Cloud"
+output "confluent_network_id" {
+  description = "Confluent Cloud Egress Network ID"
+  value       = local.confluent_network_id
+}
+
+output "confluent_private_link_attachment_id" {
+  description = "Confluent Private Link Attachment ID"
+  value       = local.private_link_attachment_id
+}
+
+output "confluent_connection_status" {
+  description = "Confluent Private Link Connection Status"
+  value       = confluent_private_link_attachment_connection.appgw.azure[0].private_endpoint_resource_id
+}
+
+output "setup_instructions" {
+  description = "Next steps for completing the setup"
   value       = <<-EOT
     ==========================================
-    Confluent Cloud Private Link Setup
+    Confluent Cloud Egress Setup - COMPLETE
     ==========================================
 
-    1. In Confluent Cloud Console:
-       - Navigate to: Environments → Your Environment → Network
-       - Click "Add network" → Select "Private Link"
-       - Choose: Azure, Region: ${var.location}
+    ✓ Azure Application Gateway deployed
+    ✓ Private Link configuration enabled
+    ✓ Confluent Cloud ${var.create_confluent_network ? "network created" : "using existing network"}
+    ✓ Confluent Cloud ${var.create_private_link_attachment ? "private link attachment created" : "using existing attachment"}
+    ✓ Connection to App Gateway established
 
-    2. Provide Application Gateway details:
-       Resource ID: ${azurerm_application_gateway.main.id}
+    Next Steps:
 
-       OR manually enter:
-       - Subscription ID: ${split("/", azurerm_application_gateway.main.id)[2]}
-       - Resource Group: ${azurerm_resource_group.main.name}
-       - Resource Name: ${azurerm_application_gateway.main.name}
-       - Resource Type: Microsoft.Network/applicationGateways
-
-    3. After Confluent creates the Private Endpoint:
+    1. Approve the Private Endpoint Connection (if required):
        - Go to Azure Portal → Application Gateway → Private Link Center
        - Find the pending connection from Confluent Cloud
-       - Click "Approve"
+       - Click "Approve" (or it may auto-approve)
 
-    4. Configure IBM MQ Connector:
+    2. Configure IBM MQ Connector:
+       - Network ID: ${confluent_network.egress.id}
+       - Use this network when creating your connector
        - Edit: connectors/ibm-mq-source.env
-       - Set MQ_HOSTNAME to the Private Endpoint DNS/IP from Confluent Cloud
-       - Set MQ_PORT to ${var.ibm_mq_frontend_port}
+       - Set MQ_HOSTNAME to: ${cidrhost(var.appgw_subnet_prefix, 10)}
+       - Set MQ_PORT to: ${var.ibm_mq_frontend_port}
        - Run: cd connectors && ./generate-config.sh
        - Deploy connector in Confluent Cloud
 
     ==========================================
-    Application Gateway Configuration
+    Configuration Details
     ==========================================
 
-    Frontend (Confluent Cloud → App Gateway):
-    - Private IP: ${cidrhost(var.appgw_subnet_prefix, 10)}
-    - Port: ${var.ibm_mq_frontend_port} (TCP)
+    Azure Side:
+    - Resource Group: ${local.resource_group_name}
+    - VNet: ${local.vnet_name}
+    - App Gateway: ${azurerm_application_gateway.main.name}
+    - Private Link IP: ${cidrhost(var.appgw_subnet_prefix, 10)}
+    - Frontend Port: ${var.ibm_mq_frontend_port}
+    - Backend Targets: ${length(var.ibm_mq_backend_targets) > 0 ? join(", ", var.ibm_mq_backend_targets) : "⚠️  None configured!"}
+    - Backend Port: ${var.ibm_mq_backend_port}
 
-    Backend (App Gateway → IBM MQ):
-    - Backend Pool: ibm-mq-backend-pool
-    - Targets: ${length(var.ibm_mq_backend_targets) > 0 ? join(", ", var.ibm_mq_backend_targets) : "None configured - add via terraform.tfvars"}
-    - Port: ${var.ibm_mq_backend_port}
-    - Health Probe: TCP on port ${var.ibm_mq_backend_port}
+    Confluent Cloud Side:
+    - Environment: ${var.confluent_environment_id}
+    - Network: ${confluent_network.egress.id}
+    - Region: ${var.confluent_cloud_region}
+    - Connection: ${confluent_private_link_attachment_connection.appgw.id}
 
-    ${length(var.ibm_mq_backend_targets) == 0 ? "\n    ⚠️  WARNING: No backend targets configured!\n    Add IBM MQ servers to terraform.tfvars:\n    ibm_mq_backend_targets = [\"10.0.2.10\"]  # or FQDN\n    Then run: terraform apply\n" : ""}
+    ${length(var.ibm_mq_backend_targets) == 0 ? "\n    ⚠️  WARNING: No backend targets configured!\n    Add IBM MQ servers to terraform.tfvars:\n    ibm_mq_backend_targets = [\"10.0.2.10\"]\n    Then run: terraform apply\n" : ""}
     ==========================================
   EOT
 }

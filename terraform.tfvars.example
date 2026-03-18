@@ -4,9 +4,36 @@
 location        = "westeurope"
 resource_prefix = "confluent-pl"
 
+# ===================================================================
+# Option 1: Create all new resources (default)
+# ===================================================================
+create_resource_group = true
+create_vnet           = true
+create_subnets        = true
+
 vnet_address_space    = ["10.0.0.0/16"]
 appgw_subnet_prefix   = "10.0.1.0/24"
 backend_subnet_prefix = "10.0.2.0/24"
+
+# ===================================================================
+# Option 2: Use existing resource group, VNet, and/or subnets
+# ===================================================================
+# Uncomment and configure to use existing resources:
+
+# Use existing resource group
+# create_resource_group        = false
+# existing_resource_group_name = "my-existing-rg"
+
+# Use existing VNet
+# create_vnet                        = false
+# existing_vnet_name                 = "my-existing-vnet"
+# existing_vnet_resource_group_name  = "my-vnet-rg"  # If VNet is in different RG
+
+# Use existing subnets
+# create_subnets                = false
+# existing_appgw_subnet_name    = "appgw-subnet"
+# existing_backend_subnet_name  = "backend-subnet"
+# Note: Existing AppGW subnet must have private_link_service_network_policies_enabled = false
 
 # IBM MQ Backend Configuration
 # Provide IP addresses or FQDNs of your IBM MQ servers
@@ -29,3 +56,27 @@ tags = {
   ManagedBy   = "terraform"
   Owner       = "your-team"
 }
+
+# Confluent Cloud Configuration
+# Get these from Confluent Cloud Console
+confluent_cloud_api_key    = "YOUR_CONFLUENT_API_KEY"
+confluent_cloud_api_secret = "YOUR_CONFLUENT_API_SECRET"
+confluent_environment_id   = "env-xxxxx"
+confluent_cloud_region     = "westeurope"  # Must match Azure location
+
+# Azure Subscription ID
+# Get with: az account show --query id -o tsv
+azure_subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# ===================================================================
+# Confluent Cloud Network Configuration (Optional)
+# ===================================================================
+# By default, a new network is created. To use existing resources:
+
+# Use existing Confluent Cloud Network (CCN)
+# create_confluent_network      = false
+# existing_confluent_network_id = "n-xxxxx"
+
+# Use existing Private Link Attachment
+# create_private_link_attachment      = false
+# existing_private_link_attachment_id = "platt-xxxxx"
