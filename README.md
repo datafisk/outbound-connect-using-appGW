@@ -41,7 +41,7 @@ Backend Resources (IBM MQ, SQL, APIs, etc.)
 
 **See [TCP-PROXY-SETUP.md](TCP-PROXY-SETUP.md) for detailed instructions** (takes ~2 minutes via Azure Portal).
 
-This limitation is only in the Terraform provider - the Azure platform itself fully supports TCP/TLS proxy capabilities.
+This limitation is only in the Terraform provider - the Azure platform itself fully supports TCP/TLS proxy capabilities. Track the feature request here: [hashicorp/terraform-provider-azurerm#26239](https://github.com/hashicorp/terraform-provider-azurerm/issues/26239)
 
 ## Quick Start
 
