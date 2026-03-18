@@ -175,3 +175,16 @@ variable "existing_private_link_attachment_id" {
   type        = string
   default     = ""
 }
+
+# DNS Configuration
+variable "create_dns_record" {
+  description = "Whether to create a DNS record for the egress access point"
+  type        = bool
+  default     = false
+}
+
+variable "dns_domain" {
+  description = "Custom DNS domain name for the egress access point (e.g., 'mq.example.com')"
+  type        = string
+  default     = ""
+}

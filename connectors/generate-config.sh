@@ -43,10 +43,14 @@ required_vars=(
     "MQ_TRANSPORT"
     "MQ_QUEUE_MANAGER"
     "MQ_CHANNEL"
-    "MQ_USERNAME"
-    "MQ_PASSWORD"
     "JMS_DESTINATION_NAME"
     "JMS_DESTINATION_TYPE"
+)
+
+# Optional variables (MQ credentials)
+optional_vars=(
+    "MQ_USERNAME"
+    "MQ_PASSWORD"
 )
 
 missing_vars=()
@@ -65,16 +69,46 @@ fi
 # Generate the configuration by substituting variables
 echo "Generating connector configuration..."
 
+# Export optional variables (empty if not set)
+export MQ_USERNAME="${MQ_USERNAME:-}"
+export MQ_PASSWORD="${MQ_PASSWORD:-}"
+
 # Use envsubst to replace variables (or sed if envsubst not available)
 if command -v envsubst &> /dev/null; then
     envsubst < "$TEMPLATE_FILE" > "$OUTPUT_FILE"
 else
     # Fallback to sed for variable substitution
     cp "$TEMPLATE_FILE" "$OUTPUT_FILE"
-    for var in "${required_vars[@]}"; do
+    all_vars=("${required_vars[@]}" "${optional_vars[@]}")
+    for var in "${all_vars[@]}"; do
         sed -i.bak "s|\${$var}|${!var}|g" "$OUTPUT_FILE"
     done
     rm -f "${OUTPUT_FILE}.bak"
+fi
+
+# Remove lines with empty credentials if not provided
+if [ -z "$MQ_USERNAME" ]; then
+    echo "ℹ️  No MQ username provided - using unauthenticated connection"
+    # Remove the mq.username line from the generated file
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        sed -i '' '/\"mq\.username\":/d' "$OUTPUT_FILE"
+    else
+        # Linux
+        sed -i '/\"mq\.username\":/d' "$OUTPUT_FILE"
+    fi
+fi
+
+if [ -z "$MQ_PASSWORD" ]; then
+    echo "ℹ️  No MQ password provided - using unauthenticated connection"
+    # Remove the mq.password line from the generated file
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        sed -i '' '/\"mq\.password\":/d' "$OUTPUT_FILE"
+    else
+        # Linux
+        sed -i '/\"mq\.password\":/d' "$OUTPUT_FILE"
+    fi
 fi
 
 echo "✅ Configuration generated successfully!"

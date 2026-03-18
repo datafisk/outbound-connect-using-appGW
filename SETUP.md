@@ -146,7 +146,7 @@ Edit `connectors/ibm-mq-source.env` with your actual values:
 - **MQ_PORT**: IBM MQ port (default: 1414)
 - **MQ_QUEUE_MANAGER**: Your queue manager name
 - **MQ_CHANNEL**: MQ channel name (e.g., DEV.APP.SVRCONN)
-- **MQ_USERNAME** / **MQ_PASSWORD**: IBM MQ credentials
+- **MQ_USERNAME** / **MQ_PASSWORD**: IBM MQ credentials (optional - leave empty for unauthenticated connections)
 - **JMS_DESTINATION_NAME**: Queue or topic name
 - **CONFLUENT_API_KEY** / **CONFLUENT_API_SECRET**: Kafka API credentials
 - **CONFLUENT_BOOTSTRAP_SERVERS**: Your Confluent Cloud bootstrap servers

@@ -80,3 +80,16 @@ azure_subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 # Use existing Private Link Attachment
 # create_private_link_attachment      = false
 # existing_private_link_attachment_id = "platt-xxxxx"
+
+# ===================================================================
+# DNS Configuration (Optional)
+# ===================================================================
+# Create a custom DNS record for the egress access point
+# This allows you to use a friendly hostname instead of the IP address
+
+# create_dns_record = true
+# dns_domain        = "mq.example.com"
+
+# Example: Use DNS in your connector
+# Then in connectors/ibm-mq-source.env, set:
+# MQ_HOSTNAME=mq.example.com

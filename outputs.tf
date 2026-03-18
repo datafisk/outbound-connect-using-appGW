@@ -62,10 +62,36 @@ output "confluent_private_link_attachment_id" {
   value       = local.private_link_attachment_id
 }
 
-output "confluent_connection_status" {
-  description = "Confluent Private Link Connection Status"
-  value       = confluent_private_link_attachment_connection.appgw.azure[0].private_endpoint_resource_id
+output "application_gateway_resource_id" {
+  description = "Application Gateway Resource ID for Confluent Cloud egress access point"
+  value       = azurerm_application_gateway.main.id
 }
+
+output "confluent_access_point_id" {
+  description = "Confluent Cloud Egress Access Point ID"
+  value       = confluent_access_point.appgw_egress.id
+}
+
+output "confluent_access_point_ip" {
+  description = "Private endpoint IP address assigned by Confluent"
+  value       = try(confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_ip_address, "pending")
+}
+
+output "confluent_private_endpoint_resource_id" {
+  description = "Azure Private Endpoint Resource ID created by Confluent"
+  value       = try(confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_resource_id, "pending")
+}
+
+output "confluent_dns_record_id" {
+  description = "Confluent DNS Record ID (if created)"
+  value       = var.create_dns_record ? confluent_dns_record.appgw_egress[0].id : "Not configured"
+}
+
+output "confluent_dns_domain" {
+  description = "Custom DNS domain for the egress access point (if configured)"
+  value       = var.create_dns_record ? var.dns_domain : "Not configured"
+}
+
 
 output "setup_instructions" {
   description = "Next steps for completing the setup"
@@ -78,23 +104,24 @@ output "setup_instructions" {
     ✓ Private Link configuration enabled
     ✓ Confluent Cloud ${var.create_confluent_network ? "network created" : "using existing network"}
     ✓ Confluent Cloud ${var.create_private_link_attachment ? "private link attachment created" : "using existing attachment"}
-    ✓ Connection to App Gateway established
+    ✓ Confluent Cloud egress access point created
 
     Next Steps:
 
-    1. Approve the Private Endpoint Connection (if required):
+    1. Approve the Private Endpoint Connection:
        - Go to Azure Portal → Application Gateway → Private Link Center
        - Find the pending connection from Confluent Cloud
-       - Click "Approve" (or it may auto-approve)
+       - Click "Approve"
 
-    2. Configure IBM MQ Connector:
-       - Network ID: ${confluent_network.egress.id}
+    3. Configure IBM MQ Connector:
+       - Network ID: ${local.confluent_network_id}
        - Use this network when creating your connector
        - Edit: connectors/ibm-mq-source.env
-       - Set MQ_HOSTNAME to: ${cidrhost(var.appgw_subnet_prefix, 10)}
+       - Set MQ_HOSTNAME to: ${var.create_dns_record ? var.dns_domain : cidrhost(var.appgw_subnet_prefix, 10)}
        - Set MQ_PORT to: ${var.ibm_mq_frontend_port}
        - Run: cd connectors && ./generate-config.sh
        - Deploy connector in Confluent Cloud
+       ${var.create_dns_record ? "\n       Note: Using custom DNS domain: ${var.dns_domain}" : ""}
 
     ==========================================
     Configuration Details
@@ -111,9 +138,14 @@ output "setup_instructions" {
 
     Confluent Cloud Side:
     - Environment: ${var.confluent_environment_id}
-    - Network: ${confluent_network.egress.id}
+    - Network: ${local.confluent_network_id}
     - Region: ${var.confluent_cloud_region}
-    - Connection: ${confluent_private_link_attachment_connection.appgw.id}
+    - Private Link Attachment: ${local.private_link_attachment_id}
+    - Egress Access Point: ${confluent_access_point.appgw_egress.id}
+    - Private Endpoint IP: ${try(confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_ip_address, "pending")}
+    - Private Endpoint Resource ID: ${try(confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_resource_id, "pending")}
+    ${var.create_dns_record ? "- Custom DNS Domain: ${var.dns_domain}" : ""}
+    ${var.create_dns_record ? "- DNS Record ID: ${confluent_dns_record.appgw_egress[0].id}" : ""}
 
     ${length(var.ibm_mq_backend_targets) == 0 ? "\n    ⚠️  WARNING: No backend targets configured!\n    Add IBM MQ servers to terraform.tfvars:\n    ibm_mq_backend_targets = [\"10.0.2.10\"]\n    Then run: terraform apply\n" : ""}
     ==========================================
