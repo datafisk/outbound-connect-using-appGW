@@ -156,6 +156,10 @@ For the example configuration to work, your IBM MQ server must be configured wit
 
 **Note**: All these values are configurable via the `ibm-mq-source.env` file. The defaults match IBM MQ Developer edition out-of-the-box settings.
 
+**IBM MQ Developer Edition Resources**:
+- [Download IBM MQ](https://www.ibm.com/products/mq/developers)
+- [Getting Started with IBM MQ](https://developer.ibm.com/tutorials/mq-connect-app-queue-manager-windows/)
+
 ### Connector Configuration
 
 The connector uses a variable-based configuration system:
