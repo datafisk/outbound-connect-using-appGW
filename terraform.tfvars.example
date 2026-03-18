@@ -1,0 +1,31 @@
+# Example terraform.tfvars file
+# Copy this to terraform.tfvars and customize as needed
+
+location        = "westeurope"
+resource_prefix = "confluent-pl"
+
+vnet_address_space    = ["10.0.0.0/16"]
+appgw_subnet_prefix   = "10.0.1.0/24"
+backend_subnet_prefix = "10.0.2.0/24"
+
+# IBM MQ Backend Configuration
+# Provide IP addresses or FQDNs of your IBM MQ servers
+ibm_mq_backend_targets = ["10.0.2.10"]  # List of IP addresses or FQDNs
+# ibm_mq_backend_targets = ["mq.example.com"]  # Example using FQDN
+# ibm_mq_backend_targets = ["10.0.2.10", "10.0.2.11"]  # Multiple servers
+
+ibm_mq_backend_port  = 1414  # IBM MQ backend port
+ibm_mq_frontend_port = 1414  # Frontend listener port (same as backend typically)
+
+appgw_sku = {
+  name     = "Standard_v2"
+  tier     = "Standard_v2"
+  capacity = 2
+}
+
+tags = {
+  Environment = "dev"
+  Purpose     = "confluent-privatelink"
+  ManagedBy   = "terraform"
+  Owner       = "your-team"
+}
