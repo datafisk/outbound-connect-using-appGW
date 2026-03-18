@@ -47,10 +47,15 @@ required_vars=(
     "JMS_DESTINATION_TYPE"
 )
 
-# Optional variables (MQ credentials)
+# Optional variables (MQ credentials and SSL/TLS)
 optional_vars=(
     "MQ_USERNAME"
     "MQ_PASSWORD"
+    "MQ_SSL_CIPHER_SUITE"
+    "MQ_SSL_KEYSTORE_LOCATION"
+    "MQ_SSL_KEYSTORE_PASSWORD"
+    "MQ_SSL_TRUSTSTORE_LOCATION"
+    "MQ_SSL_TRUSTSTORE_PASSWORD"
 )
 
 missing_vars=()
@@ -72,6 +77,11 @@ echo "Generating connector configuration..."
 # Export optional variables (empty if not set)
 export MQ_USERNAME="${MQ_USERNAME:-}"
 export MQ_PASSWORD="${MQ_PASSWORD:-}"
+export MQ_SSL_CIPHER_SUITE="${MQ_SSL_CIPHER_SUITE:-}"
+export MQ_SSL_KEYSTORE_LOCATION="${MQ_SSL_KEYSTORE_LOCATION:-}"
+export MQ_SSL_KEYSTORE_PASSWORD="${MQ_SSL_KEYSTORE_PASSWORD:-}"
+export MQ_SSL_TRUSTSTORE_LOCATION="${MQ_SSL_TRUSTSTORE_LOCATION:-}"
+export MQ_SSL_TRUSTSTORE_PASSWORD="${MQ_SSL_TRUSTSTORE_PASSWORD:-}"
 
 # Use envsubst to replace variables (or sed if envsubst not available)
 if command -v envsubst &> /dev/null; then
@@ -109,6 +119,34 @@ if [ -z "$MQ_PASSWORD" ]; then
         # Linux
         sed -i '/\"mq\.password\":/d' "$OUTPUT_FILE"
     fi
+fi
+
+# Remove SSL/TLS configuration lines if not provided
+ssl_vars=(
+    "MQ_SSL_CIPHER_SUITE:mq\.ssl\.cipher\.suite"
+    "MQ_SSL_KEYSTORE_LOCATION:mq\.ssl\.keystore\.location"
+    "MQ_SSL_KEYSTORE_PASSWORD:mq\.ssl\.keystore\.password"
+    "MQ_SSL_TRUSTSTORE_LOCATION:mq\.ssl\.truststore\.location"
+    "MQ_SSL_TRUSTSTORE_PASSWORD:mq\.ssl\.truststore\.password"
+)
+
+for ssl_var in "${ssl_vars[@]}"; do
+    var_name="${ssl_var%%:*}"
+    json_key="${ssl_var##*:}"
+
+    if [ -z "${!var_name}" ]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            sed -i '' "/\"${json_key}\":/d" "$OUTPUT_FILE"
+        else
+            # Linux
+            sed -i "/\"${json_key}\":/d" "$OUTPUT_FILE"
+        fi
+    fi
+done
+
+if [ -n "$MQ_SSL_CIPHER_SUITE" ] || [ -n "$MQ_SSL_KEYSTORE_LOCATION" ]; then
+    echo "ℹ️  SSL/TLS keystore configuration included"
 fi
 
 echo "✅ Configuration generated successfully!"

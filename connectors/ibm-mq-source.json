@@ -19,6 +19,12 @@
     "jms.destination.name": "${JMS_DESTINATION_NAME}",
     "jms.destination.type": "${JMS_DESTINATION_TYPE}",
 
+    "mq.ssl.cipher.suite": "${MQ_SSL_CIPHER_SUITE}",
+    "mq.ssl.keystore.location": "${MQ_SSL_KEYSTORE_LOCATION}",
+    "mq.ssl.keystore.password": "${MQ_SSL_KEYSTORE_PASSWORD}",
+    "mq.ssl.truststore.location": "${MQ_SSL_TRUSTSTORE_LOCATION}",
+    "mq.ssl.truststore.password": "${MQ_SSL_TRUSTSTORE_PASSWORD}",
+
     "confluent.topic.bootstrap.servers": "${CONFLUENT_BOOTSTRAP_SERVERS}",
     "confluent.topic.replication.factor": "3",
 
