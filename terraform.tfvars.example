@@ -88,6 +88,37 @@ azure_subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 # create_dns_record = true
 # dns_domain        = "mq.example.com"
 
-# Example: Use DNS in your connector
-# Then in connectors/ibm-mq-source.env, set:
-# MQ_HOSTNAME=mq.example.com
+# ===================================================================
+# IBM MQ Source Connector Configuration (Optional)
+# ===================================================================
+# Set create_connector = true to automatically deploy the connector
+
+# create_connector = true
+# connector_name   = "ibm-mq-source-connector"
+
+# Kafka Cluster Configuration
+# kafka_cluster_id  = "lkc-xxxxx"  # Get from Confluent Cloud
+# kafka_api_key     = "YOUR_KAFKA_API_KEY"
+# kafka_api_secret  = "YOUR_KAFKA_API_SECRET"
+# kafka_topic       = "ibm-mq-messages"
+
+# IBM MQ Connection Settings
+# The connector will automatically use DNS name (if created) or access point IP
+# mq_transport      = "client"
+# mq_queue_manager  = "QM1"
+# mq_channel        = "DEV.APP.SVRCONN"
+
+# IBM MQ Credentials (Optional)
+# mq_username = "mqadmin"
+# mq_password = "your-mq-password"
+
+# JMS Settings
+# jms_destination_name = "DEV.QUEUE.1"
+# jms_destination_type = "queue"
+
+# SSL/TLS Configuration (Optional)
+# mq_ssl_cipher_suite          = "TLS_RSA_WITH_AES_128_CBC_SHA256"
+# mq_ssl_keystore_location     = "/path/to/keystore.jks"
+# mq_ssl_keystore_password     = "keystore-password"
+# mq_ssl_truststore_location   = "/path/to/truststore.jks"
+# mq_ssl_truststore_password   = "truststore-password"

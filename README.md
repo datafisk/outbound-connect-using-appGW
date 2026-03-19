@@ -67,17 +67,11 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
 5. **Configure TCP/TLS Proxy** (manual step):
    - See [TCP-PROXY-SETUP.md](TCP-PROXY-SETUP.md) (~2 minutes)
 
-6. **Configure Connector Variables**:
-   ```bash
-   cp connectors/ibm-mq-source.env.example connectors/ibm-mq-source.env
-   # Edit connectors/ibm-mq-source.env with your values
-   ```
-
-7. **Deploy Connector**:
-   ```bash
-   cd connectors && ./generate-config.sh
-   # Deploy the generated configuration to Confluent Cloud using the network ID from terraform output
-   ```
+6. **(Optional) Deploy IBM MQ Connector**:
+   - Set `create_connector = true` in `terraform.tfvars`
+   - Configure connector variables (kafka_cluster_id, MQ settings, etc.)
+   - Run `terraform apply` to deploy the connector automatically
+   - Or deploy manually via Confluent Cloud UI using network ID from output
 
 ## What's Included
 
@@ -89,10 +83,9 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
 - `CONFLUENT-SETUP.md` - **Confluent Cloud credential setup guide** ⭐
 - `EXISTING-RESOURCES.md` - **Using existing Resource Groups/VNets/Subnets** ⭐
 - `TCP-PROXY-SETUP.md` - **TCP/TLS proxy configuration guide** ⭐
-- `connectors/ibm-mq-source.json` - IBM MQ connector template with variables
-- `connectors/ibm-mq-source.env.example` - Example configuration values
-- `connectors/generate-config.sh` - Script to generate final connector config
 - `SETUP.md` - Detailed step-by-step guide
+
+**IBM MQ Connector**: Optionally deployed via Terraform by setting `create_connector = true`
 
 ## Using Existing Resources
 
@@ -162,16 +155,39 @@ For the example configuration to work, your IBM MQ server must be configured wit
 
 ### Connector Configuration
 
-The connector uses a variable-based configuration system:
-- `ibm-mq-source.json` - Template with variable placeholders
-- `ibm-mq-source.env.example` - Example values for all variables
-- `generate-config.sh` - Generates final config with values substituted
+The IBM MQ Source connector can be deployed automatically via Terraform:
 
-All MQ and JMS parameters are configurable via environment variables for security and flexibility.
+1. **Enable connector deployment** in `terraform.tfvars`:
+   ```hcl
+   create_connector = true
+   connector_name   = "ibm-mq-source-connector"
 
-**Note**: MQ credentials (username/password) are optional. If your IBM MQ server is configured to allow unauthenticated connections, you can leave these empty in the configuration. This is acceptable when relying on network-level security (Private Link, NSG, VPN), though using credentials provides defense-in-depth.
+   # Kafka Cluster
+   kafka_cluster_id = "lkc-xxxxx"
+   kafka_api_key    = "YOUR_KAFKA_API_KEY"
+   kafka_api_secret = "YOUR_KAFKA_API_SECRET"
+   kafka_topic      = "ibm-mq-messages"
 
-**SSL/TLS Support**: The connector supports custom keystore and truststore configuration for SSL/TLS connections to IBM MQ. Configure cipher suite, keystore location, and truststore settings in the environment file as needed.
+   # IBM MQ Settings (uses defaults: QM1, DEV.APP.SVRCONN, DEV.QUEUE.1)
+   mq_queue_manager     = "QM1"
+   mq_channel           = "DEV.APP.SVRCONN"
+   jms_destination_name = "DEV.QUEUE.1"
+
+   # Optional: MQ Credentials
+   mq_username = "mqadmin"
+   mq_password = "your-password"
+   ```
+
+2. **Deploy with Terraform**:
+   ```bash
+   terraform apply
+   ```
+
+The connector automatically uses the DNS name (if created) or the private endpoint IP address for the MQ connection.
+
+**Note**: MQ credentials (username/password) are optional. If your IBM MQ server is configured to allow unauthenticated connections, you can leave these empty. This is acceptable when relying on network-level security (Private Link, NSG), though using credentials provides defense-in-depth.
+
+**SSL/TLS Support**: Configure `mq_ssl_*` variables in `terraform.tfvars` for SSL/TLS connections to IBM MQ.
 
 ### Generating SSL/TLS Keystores (Optional)
 

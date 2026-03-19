@@ -115,3 +115,60 @@ resource "confluent_dns_record" "appgw_egress" {
     confluent_access_point.appgw_egress
   ]
 }
+
+# IBM MQ Source Connector
+resource "confluent_connector" "ibm_mq_source" {
+  count = var.create_connector ? 1 : 0
+
+  environment {
+    id = data.confluent_environment.main.id
+  }
+
+  kafka_cluster {
+    id = var.kafka_cluster_id
+  }
+
+  config_sensitive = {
+    "kafka.api.key"    = var.kafka_api_key
+    "kafka.api.secret" = var.kafka_api_secret
+    "mq.password"      = var.mq_password != "" ? var.mq_password : null
+  }
+
+  config_nonsensitive = merge({
+    "connector.class"   = "io.confluent.connect.ibm.mq.IbmMQSourceConnector"
+    "name"              = var.connector_name
+    "kafka.auth.mode"   = "KAFKA_API_KEY"
+    "kafka.topic"       = var.kafka_topic
+    "tasks.max"         = tostring(var.connector_tasks_max)
+
+    # MQ Connection Settings - use DNS name if created, otherwise use access point IP
+    "mq.hostname"       = var.create_dns_record ? var.dns_domain : confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_ip_address
+    "mq.port"           = tostring(var.ibm_mq_frontend_port)
+    "mq.transport"      = var.mq_transport
+    "mq.queue.manager"  = var.mq_queue_manager
+    "mq.channel"        = var.mq_channel
+
+    # JMS Settings
+    "jms.destination.name" = var.jms_destination_name
+    "jms.destination.type" = var.jms_destination_type
+
+    # Output format
+    "key.converter"                  = "org.apache.kafka.connect.storage.StringConverter"
+    "value.converter"                = "org.apache.kafka.connect.json.JsonConverter"
+    "value.converter.schemas.enable" = "false"
+    "output.data.format"             = "JSON"
+  },
+  var.mq_username != "" ? { "mq.username" = var.mq_username } : {},
+  var.mq_ssl_cipher_suite != "" ? {
+    "mq.ssl.cipher.suite"          = var.mq_ssl_cipher_suite
+    "mq.ssl.keystore.location"     = var.mq_ssl_keystore_location
+    "mq.ssl.keystore.password"     = var.mq_ssl_keystore_password
+    "mq.ssl.truststore.location"   = var.mq_ssl_truststore_location
+    "mq.ssl.truststore.password"   = var.mq_ssl_truststore_password
+  } : {})
+
+  depends_on = [
+    confluent_access_point.appgw_egress,
+    confluent_dns_record.appgw_egress
+  ]
+}

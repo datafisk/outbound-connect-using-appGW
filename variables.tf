@@ -176,3 +176,127 @@ variable "dns_domain" {
   type        = string
   default     = ""
 }
+
+# Connector Configuration
+variable "create_connector" {
+  description = "Whether to create the IBM MQ Source connector"
+  type        = bool
+  default     = false
+}
+
+variable "connector_name" {
+  description = "Name for the IBM MQ Source connector"
+  type        = string
+  default     = "ibm-mq-source-connector"
+}
+
+variable "kafka_cluster_id" {
+  description = "Kafka cluster ID where the connector will be deployed"
+  type        = string
+  default     = ""
+}
+
+variable "kafka_api_key" {
+  description = "Kafka cluster API key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "kafka_api_secret" {
+  description = "Kafka cluster API secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "kafka_topic" {
+  description = "Kafka topic to write IBM MQ messages to"
+  type        = string
+  default     = "ibm-mq-messages"
+}
+
+variable "connector_tasks_max" {
+  description = "Maximum number of tasks for the connector"
+  type        = number
+  default     = 1
+}
+
+# IBM MQ Configuration
+variable "mq_transport" {
+  description = "IBM MQ transport type (typically 'client')"
+  type        = string
+  default     = "client"
+}
+
+variable "mq_queue_manager" {
+  description = "IBM MQ Queue Manager name"
+  type        = string
+  default     = "QM1"
+}
+
+variable "mq_channel" {
+  description = "IBM MQ Server Connection Channel name"
+  type        = string
+  default     = "DEV.APP.SVRCONN"
+}
+
+variable "mq_username" {
+  description = "IBM MQ username (optional)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "mq_password" {
+  description = "IBM MQ password (optional)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# JMS Configuration
+variable "jms_destination_name" {
+  description = "JMS destination (queue or topic) name"
+  type        = string
+  default     = "DEV.QUEUE.1"
+}
+
+variable "jms_destination_type" {
+  description = "JMS destination type (queue or topic)"
+  type        = string
+  default     = "queue"
+}
+
+# SSL/TLS Configuration (Optional)
+variable "mq_ssl_cipher_suite" {
+  description = "IBM MQ SSL cipher suite (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "mq_ssl_keystore_location" {
+  description = "Path to keystore file (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "mq_ssl_keystore_password" {
+  description = "Keystore password (optional)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "mq_ssl_truststore_location" {
+  description = "Path to truststore file (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "mq_ssl_truststore_password" {
+  description = "Truststore password (optional)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

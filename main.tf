@@ -153,11 +153,12 @@ resource "azurerm_application_gateway" "main" {
   }
 
   # Frontend configuration for Private Link (Confluent Cloud)
+  # Note: Application Gateway Standard_v2 with Private Link REQUIRES static IP allocation
   frontend_ip_configuration {
-    name                          = "appgw-frontend-private"
-    subnet_id                     = local.appgw_subnet_id
-    private_ip_address            = cidrhost(var.appgw_subnet_prefix, 10)
-    private_ip_address_allocation = "Static"
+    name                            = "appgw-frontend-private"
+    subnet_id                       = local.appgw_subnet_id
+    private_ip_address              = cidrhost(var.appgw_subnet_prefix, 50)
+    private_ip_address_allocation   = "Static"
     private_link_configuration_name = "private-link-config"
   }
 
