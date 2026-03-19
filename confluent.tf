@@ -135,7 +135,7 @@ resource "confluent_connector" "ibm_mq_source" {
   }
 
   config_nonsensitive = merge({
-    "connector.class"   = "io.confluent.connect.ibm.mq.IbmMQSourceConnector"
+    "connector.class"   = "IbmMQSource"
     "name"              = var.connector_name
     "kafka.auth.mode"   = "KAFKA_API_KEY"
     "kafka.topic"       = var.kafka_topic
@@ -168,7 +168,6 @@ resource "confluent_connector" "ibm_mq_source" {
   } : {})
 
   depends_on = [
-    confluent_access_point.appgw_egress,
-    confluent_dns_record.appgw_egress
+    confluent_access_point.appgw_egress
   ]
 }

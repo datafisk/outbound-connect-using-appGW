@@ -66,6 +66,11 @@ confluent_cloud_region     = "westeurope"  # Must match Azure location
 # Get with: az account show --query id -o tsv
 azure_subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
+# TCP Proxy Auto-Configuration (Optional)
+# Automatically configure App Gateway for TCP proxy after deployment
+# Requires Azure CLI to be installed and authenticated
+# auto_configure_tcp_proxy = true
+
 # ===================================================================
 # Confluent Cloud Network Configuration (Optional)
 # ===================================================================
