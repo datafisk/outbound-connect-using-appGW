@@ -11,14 +11,55 @@
 - Backend pool configured
 - Health probe configured
 
-## ⚠️ Manual Configuration Required
+## ⚠️ Configuration Required
 
 The Terraform azurerm provider (v4.64.0) doesn't yet fully support TCP/TLS proxy configuration via code.
-**You need to complete the TCP/TLS proxy setup manually via Azure Portal.**
+**Choose one of the following options to complete the TCP/TLS proxy setup:**
 
 ---
 
-## Option 1: Azure Portal Configuration (Recommended)
+## Option 1: Automated Configuration (Azure CLI) ⭐ RECOMMENDED
+
+Use the provided script to automatically configure TCP proxy using Azure CLI:
+
+```bash
+./scripts/configure-tcp-proxy.sh <resource-group> <app-gateway-name>
+```
+
+**Example:**
+```bash
+./scripts/configure-tcp-proxy.sh vpc-peered-cce-se confluent-pl-appgw
+```
+
+**What it does:**
+- ✓ Creates TCP listener on port 1414
+- ✓ Configures TCP backend settings
+- ✓ Updates health probe to use TCP protocol
+- ✓ Updates routing rule to use TCP components
+
+**Prerequisites:**
+- Azure CLI installed and authenticated
+- Contributor access to the resource group
+
+**Terraform Integration:**
+
+You can also enable automatic configuration via Terraform:
+
+```hcl
+# terraform.tfvars
+auto_configure_tcp_proxy = true
+```
+
+Then run:
+```bash
+terraform apply
+```
+
+The script will run automatically after the Application Gateway is created.
+
+---
+
+## Option 2: Azure Portal Configuration (Manual)
 
 ### Step 1: Configure TCP Health Probe
 
