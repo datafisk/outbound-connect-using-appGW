@@ -57,17 +57,6 @@ APPGW_CONFIG=$(az network application-gateway show \
     --resource-group "$RESOURCE_GROUP" \
     -o json)
 
-# Extract the HTTP listener, settings, and probe names
-HTTP_LISTENER_NAME=$(echo "$APPGW_CONFIG" | jq -r '.httpListeners[0].name // empty')
-HTTP_SETTINGS_NAME=$(echo "$APPGW_CONFIG" | jq -r '.backendHttpSettingsCollection[0].name // empty')
-PROBE_NAME=$(echo "$APPGW_CONFIG" | jq -r '.probes[0].name // empty')
-
-echo "📋 Current HTTP Configuration:"
-echo "   - HTTP Listener: ${HTTP_LISTENER_NAME:-Not found}"
-echo "   - Backend Settings: ${HTTP_SETTINGS_NAME:-Not found}"
-echo "   - Health Probe: ${PROBE_NAME:-Not found}"
-echo ""
-
 # Check if TCP config already exists
 TCP_LISTENER=$(echo "$APPGW_CONFIG" | jq -r '.listeners[]? | select(.protocol == "Tcp") | .name' | head -1)
 if [ -n "$TCP_LISTENER" ]; then
@@ -76,113 +65,68 @@ if [ -n "$TCP_LISTENER" ]; then
     exit 0
 fi
 
-# Prepare the TCP configuration updates
-echo "🔧 Preparing TCP configuration..."
-
-# Get subscription ID
-SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-API_VERSION="2023-11-01"
-
-# Build the PATCH request body
-# We'll create new TCP listener, backend settings, and probe
-# Then update the routing rule to use them
-
-cat > /tmp/appgw-tcp-config.json <<EOF
-{
-  "properties": {
-    "listeners": [
-      {
-        "name": "ibm-mq-listener",
-        "properties": {
-          "frontendIPConfiguration": {
-            "id": "${APPGW_ID}/frontendIPConfigurations/appgw-frontend-private"
-          },
-          "frontendPort": {
-            "id": "${APPGW_ID}/frontendPorts/ibm-mq-port"
-          },
-          "protocol": "Tcp"
-        }
-      }
-    ],
-    "backendSettingsCollection": [
-      {
-        "name": "ibm-mq",
-        "properties": {
-          "port": 1414,
-          "protocol": "Tcp",
-          "timeout": 20
-        }
-      }
-    ],
-    "probes": [
-      {
-        "name": "${PROBE_NAME}",
-        "properties": {
-          "protocol": "Tcp",
-          "interval": 30,
-          "timeout": 30,
-          "unhealthyThreshold": 3,
-          "minServers": 0,
-          "match": {
-            "statusCodes": ["200-399"]
-          }
-        }
-      }
-    ],
-    "routingRules": [
-      {
-        "name": "ibm-mq-routing-rule",
-        "properties": {
-          "ruleType": "Basic",
-          "priority": 100,
-          "listener": {
-            "id": "${APPGW_ID}/listeners/ibm-mq-listener"
-          },
-          "backendAddressPool": {
-            "id": "${APPGW_ID}/backendAddressPools/ibm-mq-backend-pool"
-          },
-          "backendSettings": {
-            "id": "${APPGW_ID}/backendSettingsCollection/ibm-mq"
-          }
-        }
-      }
-    ]
-  }
-}
-EOF
-
-echo "✓ TCP configuration prepared"
+echo "📋 Current configuration detected"
 echo ""
 
-# Apply the configuration using Azure REST API
-echo "🚀 Applying TCP configuration..."
-echo "⏳ This may take 5-10 minutes..."
+# Use Azure Portal or manual configuration
+echo "⚠️  Automatic TCP configuration via Azure CLI is not supported."
 echo ""
-
-az rest \
-    --method PATCH \
-    --uri "https://management.azure.com${APPGW_ID}?api-version=${API_VERSION}" \
-    --body @/tmp/appgw-tcp-config.json \
-    --output none
-
-# Wait for the update to complete
-echo "⏳ Waiting for Application Gateway to update..."
-az network application-gateway wait \
-    --name "$APPGW_NAME" \
-    --resource-group "$RESOURCE_GROUP" \
-    --updated \
-    --timeout 600
-
-# Clean up temp file
-rm -f /tmp/appgw-tcp-config.json
-
+echo "Please configure TCP proxy using one of these methods:"
 echo ""
-echo "✅ TCP Proxy Configuration Complete!"
+echo "Option 1: Azure Portal (Recommended)"
+echo "======================================="
+echo "1. Go to: https://portal.azure.com"
+echo "2. Navigate to: Resource Groups → $RESOURCE_GROUP → $APPGW_NAME"
+echo "3. Configure the following:"
 echo ""
-echo "Configuration Summary:"
-echo "  ✓ TCP Listener created (ibm-mq-listener)"
-echo "  ✓ TCP Backend Settings created (ibm-mq)"
-echo "  ✓ TCP Health Probe updated (${PROBE_NAME})"
-echo "  ✓ Routing Rule updated (ibm-mq-routing-rule)"
+echo "   Health Probe:"
+echo "   - Name: ibm-mq-health-probe"
+echo "   - Protocol: TCP"
+echo "   - Port: 1414"
+echo ""
+echo "   Backend Settings:"
+echo "   - Delete: ibm-mq-backend-settings (HTTP)"
+echo "   - Create new Backend Settings:"
+echo "     - Name: ibm-mq"
+echo "     - Protocol: TCP"
+echo "     - Port: 1414"
+echo "     - Timeout: 20"
+echo ""
+echo "   Listener:"
+echo "   - Delete: ibm-mq-private-listener (HTTP)"
+echo "   - Create new Listener:"
+echo "     - Name: ibm-mq-listener"
+echo "     - Protocol: TCP"
+echo "     - Frontend IP: appgw-frontend-private"
+echo "     - Port: 1414"
+echo ""
+echo "   Routing Rule:"
+echo "   - Delete: ibm-mq-private-routing-rule"
+echo "   - Create new Routing Rule:"
+echo "     - Name: ibm-mq-routing-rule"
+echo "     - Listener: ibm-mq-listener"
+echo "     - Backend pool: ibm-mq-backend-pool"
+echo "     - Backend settings: ibm-mq"
+echo ""
+echo "Option 2: Azure CLI (Export/Import)"
+echo "===================================="
+echo "1. Export configuration:"
+echo "   az network application-gateway show \\"
+echo "     --name $APPGW_NAME \\"
+echo "     --resource-group $RESOURCE_GROUP \\"
+echo "     > appgw-config.json"
+echo ""
+echo "2. Edit appgw-config.json manually:"
+echo "   - Change listeners protocol to 'Tcp'"
+echo "   - Change backendSettingsCollection protocol to 'Tcp'"
+echo "   - Change probes protocol to 'Tcp'"
+echo "   - Update routing rules to reference new components"
+echo ""
+echo "3. Import configuration:"
+echo "   # This requires manual JSON editing and is complex"
+echo "   # Portal method is recommended"
 echo ""
 echo "==============================================="
+echo ""
+echo "For detailed instructions, see: TCP-PROXY-SETUP.md"
+echo ""
