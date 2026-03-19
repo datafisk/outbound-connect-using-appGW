@@ -30,7 +30,7 @@ output "application_gateway_public_ip" {
 
 output "application_gateway_private_ip" {
   description = "Private IP address of the Application Gateway (for Private Link)"
-  value       = cidrhost(var.appgw_subnet_prefix, 10)
+  value       = cidrhost(var.appgw_subnet_prefix, 50)
 }
 
 output "application_gateway_private_link_configuration_id" {
@@ -87,6 +87,16 @@ output "confluent_dns_domain" {
   value       = var.create_dns_record ? var.dns_domain : "Not configured"
 }
 
+output "connector_id" {
+  description = "IBM MQ Source Connector ID (if created)"
+  value       = var.create_connector ? confluent_connector.ibm_mq_source[0].id : "Not created - set create_connector=true to deploy"
+}
+
+output "connector_status" {
+  description = "IBM MQ Source Connector status (if created)"
+  value       = var.create_connector ? confluent_connector.ibm_mq_source[0].status : "Not created"
+}
+
 
 output "setup_instructions" {
   description = "Next steps for completing the setup"
@@ -108,15 +118,8 @@ output "setup_instructions" {
        - Find the pending connection from Confluent Cloud
        - Click "Approve"
 
-    3. Configure IBM MQ Connector:
-       - Network ID: ${local.confluent_network_id}
-       - Use this network when creating your connector
-       - Edit: connectors/ibm-mq-source.env
-       - Set MQ_HOSTNAME to: ${var.create_dns_record ? var.dns_domain : cidrhost(var.appgw_subnet_prefix, 10)}
-       - Set MQ_PORT to: ${var.ibm_mq_frontend_port}
-       - Run: cd connectors && ./generate-config.sh
-       - Deploy connector in Confluent Cloud
-       ${var.create_dns_record ? "\n       Note: Using custom DNS domain: ${var.dns_domain}" : ""}
+    3. ${var.create_connector ? "IBM MQ Connector Status:" : "Deploy IBM MQ Connector:"}
+       ${var.create_connector ? "✓ Connector deployed automatically: ${confluent_connector.ibm_mq_source[0].id}\n       ✓ Status: ${confluent_connector.ibm_mq_source[0].status}\n       ✓ Using ${var.create_dns_record ? "DNS: ${var.dns_domain}" : "IP: ${confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_ip_address}"}" : "- Set create_connector=true in terraform.tfvars\n       - Configure connector variables (kafka_cluster_id, MQ settings, etc.)\n       - Run: terraform apply\n       - Or manually deploy using Confluent Cloud UI with network: ${local.confluent_network_id}"}
 
     ==========================================
     Configuration Details
@@ -126,7 +129,7 @@ output "setup_instructions" {
     - Resource Group: ${local.resource_group_name}
     - VNet: ${local.vnet_name}
     - App Gateway: ${azurerm_application_gateway.main.name}
-    - Private Link IP: ${cidrhost(var.appgw_subnet_prefix, 10)}
+    - Private Link IP: ${cidrhost(var.appgw_subnet_prefix, 50)}
     - Frontend Port: ${var.ibm_mq_frontend_port}
     - Backend Targets: ${length(var.ibm_mq_backend_targets) > 0 ? join(", ", var.ibm_mq_backend_targets) : "⚠️  None configured!"}
     - Backend Port: ${var.ibm_mq_backend_port}
