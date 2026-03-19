@@ -18,107 +18,148 @@ The Terraform azurerm provider (v4.64.0) doesn't yet fully support TCP/TLS proxy
 
 ---
 
-## Option 1: Automated Configuration (Azure CLI) ⭐ RECOMMENDED
+## Option 1: Automated Configuration (PowerShell) ⭐ RECOMMENDED
 
-Use the provided script to automatically configure TCP proxy using Azure CLI:
+Use the provided PowerShell script to automatically configure TCP proxy:
 
-```bash
-./scripts/configure-tcp-proxy.sh <resource-group> <app-gateway-name>
+```powershell
+.\scripts\configure-tcp-proxy.ps1 -ResourceGroup <name> -AppGatewayName <name>
 ```
 
 **Example:**
-```bash
-./scripts/configure-tcp-proxy.sh vpc-peered-cce-se confluent-pl-appgw
+```powershell
+.\scripts\configure-tcp-proxy.ps1 -ResourceGroup vpc-peered-cce-se -AppGatewayName confluent-pl-appgw
 ```
 
 **What it does:**
 - ✓ Creates TCP listener on port 1414
 - ✓ Configures TCP backend settings
 - ✓ Updates health probe to use TCP protocol
-- ✓ Updates routing rule to use TCP components
+- ✓ Creates TCP routing rule
+- ✓ Removes old HTTP components
 
 **Prerequisites:**
-- Azure CLI installed and authenticated
+- PowerShell with Az module installed: `Install-Module -Name Az -AllowClobber -Scope CurrentUser`
+- Azure authentication: `Connect-AzAccount`
 - Contributor access to the resource group
 
-**Terraform Integration:**
-
-You can also enable automatic configuration via Terraform:
-
-```hcl
-# terraform.tfvars
-auto_configure_tcp_proxy = true
-```
-
-Then run:
-```bash
-terraform apply
-```
-
-The script will run automatically after the Application Gateway is created.
+**Estimated time:** 15-20 minutes (includes 3 Application Gateway updates)
 
 ---
 
 ## Option 2: Azure Portal Configuration (Manual)
 
-### Step 1: Configure TCP Health Probe
+**Estimated time:** 20-30 minutes
+
+### Overview
+
+The Azure Portal doesn't have a single button to convert HTTP to TCP. You'll need to:
+1. Create new TCP components (listener, backend settings)
+2. Create a new TCP routing rule
+3. Delete the old HTTP components
+
+### Detailed Steps
+
+#### Step 1: Create TCP Listener
 
 1. Open [Azure Portal](https://portal.azure.com)
-2. Navigate to: **Resource Groups** → `confluent-pl-rg` → `confluent-pl-appgw`
-3. In the left menu, select **Health probes**
-4. Click on `ibm-mq-health-probe`
-5. Update the following:
+2. Navigate to: **Resource Groups** → `vpc-peered-cce-se` → `confluent-pl-appgw`
+3. Wait for the Application Gateway status to show **Succeeded** (top of page)
+4. In the left menu, select **Listeners**
+5. Click **+ Add listener**
+6. Configure the TCP listener:
+   - **Listener name**: `ibm-mq-listener`
+   - **Frontend IP**: `appgw-frontend-private` (Private IP)
+   - **Protocol**: `TCP`
+   - **Port**: `1414`
+   - **Listener type**: `Basic`
+7. Click **Add**
+8. Wait for the update to complete (Status: Updating → Succeeded, ~5 minutes)
+
+#### Step 2: Update Health Probe to TCP
+
+1. In the left menu, select **Health probes**
+2. Click on `ibm-mq-health-probe`
+3. Update the following:
    - **Protocol**: Change from `Http` to `Tcp`
    - **Port**: `1414`
    - **Interval**: `30` seconds
    - **Timeout**: `30` seconds
    - **Unhealthy threshold**: `3`
-6. Click **Save**
-
-### Step 2: Update Backend Settings for TLS
-
-1. In the same Application Gateway, select **Backend settings**
-2. Click on `ibm-mq-backend-settings`
-3. Update the following:
-   - **Backend protocol**: Change from `Http` to `Https`
-   - **Backend port**: `1414`
-   - **Custom probe**: Select `ibm-mq-health-probe`
-   - **Override with new host name**: `No`
+   - Remove any **Host** or **Path** settings (not needed for TCP)
 4. Click **Save**
+5. Wait for the update to complete (Status: Updating → Succeeded, ~5 minutes)
 
-### Step 3: Verify Configuration
+#### Step 3: Create TCP Backend Settings
 
-1. Wait for the Application Gateway to finish updating (Status: Succeeded)
-2. Go to **Backend health**
-3. Once you add backend targets, you should see TCP health checks
+1. In the left menu, select **Backend settings**
+2. Click **+ Add**
+3. Configure the TCP backend settings:
+   - **Backend settings name**: `ibm-mq`
+   - **Backend protocol**: `TCP`
+   - **Backend port**: `1414`
+   - **Timeout (seconds)**: `20`
+   - **Custom probe**: Select `ibm-mq-health-probe`
+4. Click **Add**
+5. Wait for the update to complete (Status: Updating → Succeeded, ~5 minutes)
 
----
+#### Step 4: Create TCP Routing Rule
 
-##Option 2: Azure CLI Configuration
+1. In the left menu, select **Rules**
+2. Click **+ Routing rule**
+3. Configure the routing rule:
+   - **Rule name**: `ibm-mq-routing-rule`
+   - **Priority**: `100`
+   - **Listener**: Select `ibm-mq-listener` (the TCP listener you created)
+4. Click **Backend targets** tab
+5. Configure backend targets:
+   - **Target type**: `Backend pool`
+   - **Backend target**: Select `ibm-mq-backend-pool`
+   - **Backend settings**: Select `ibm-mq` (the TCP backend settings you created)
+6. Click **Add**
+7. Wait for the update to complete (Status: Updating → Succeeded, ~5 minutes)
 
-```bash
-# 1. Get Application Gateway resource
-RESOURCE_GROUP="confluent-pl-rg"
-APPGW_NAME="confluent-pl-appgw"
+#### Step 5: Delete Old HTTP Routing Rule
 
-# 2. Export current configuration
-az network application-gateway show \
-  --name "$APPGW_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  > appgw-config.json
+1. In the left menu, select **Rules**
+2. Find the rule `ibm-mq-private-routing-rule`
+3. Click the **...** menu on the right
+4. Click **Delete**
+5. Confirm the deletion
+6. Wait for the update to complete (Status: Updating → Succeeded, ~5 minutes)
 
-# 3. Manually edit appgw-config.json:
-#    - Find "probes" section
-#    - Change "ibm-mq-health-probe" protocol to "Tcp"
-#    - Find "backendHttpSettingsCollection" section
-#    - Change "ibm-mq-backend-settings" protocol to "Https"
+#### Step 6: Delete Old HTTP Listener
 
-# 4. Apply the updated configuration
-az network application-gateway update \
-  --name "$APPGW_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --set properties=@appgw-config.json
-```
+1. In the left menu, select **Listeners**
+2. Find the listener `ibm-mq-private-listener`
+3. Click the **...** menu on the right
+4. Click **Delete**
+5. Confirm the deletion
+6. Wait for the update to complete (Status: Updating → Succeeded, ~5 minutes)
+
+#### Step 7: Delete Old HTTP Backend Settings
+
+1. In the left menu, select **Backend settings**
+2. Find the settings `ibm-mq-backend-settings`
+3. Click the **...** menu on the right
+4. Click **Delete**
+5. Confirm the deletion
+6. Wait for the update to complete (Status: Updating → Succeeded, ~5 minutes)
+
+#### Step 8: Verify TCP Configuration
+
+1. In the left menu, select **Listeners**
+   - Verify `ibm-mq-listener` shows Protocol: `TCP`
+2. Select **Backend settings**
+   - Verify `ibm-mq` shows Protocol: `TCP`
+3. Select **Health probes**
+   - Verify `ibm-mq-health-probe` shows Protocol: `Tcp`
+4. Select **Rules**
+   - Verify `ibm-mq-routing-rule` exists and is using the TCP components
+5. Select **Backend health**
+   - Verify backend targets show TCP health checks (may show unhealthy until IBM MQ is configured)
+
+**✅ TCP Proxy configuration is complete!**
 
 ---
 

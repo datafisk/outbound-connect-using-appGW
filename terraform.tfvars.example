@@ -68,8 +68,11 @@ azure_subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 # TCP Proxy Auto-Configuration (Optional)
 # Automatically configure App Gateway for TCP proxy after deployment
-# Requires Azure CLI to be installed and authenticated
+# Requires PowerShell with Az module: Install-Module -Name Az -AllowClobber
+# And Azure authentication: Connect-AzAccount
 # auto_configure_tcp_proxy = true
+#
+# Alternative: Configure manually via Azure Portal (see TCP-PROXY-SETUP.md)
 
 # ===================================================================
 # Confluent Cloud Network Configuration (Optional)
