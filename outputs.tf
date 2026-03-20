@@ -97,6 +97,10 @@ output "connector_status" {
   value       = var.create_connector ? confluent_connector.ibm_mq_source[0].status : "Not created"
 }
 
+output "appgw_subnet_cidr" {
+  description = "Application Gateway subnet CIDR - Add this to IBM MQ firewall allow list"
+  value       = var.appgw_subnet_prefix
+}
 
 output "setup_instructions" {
   description = "Next steps for completing the setup"
@@ -113,7 +117,21 @@ output "setup_instructions" {
 
     Next Steps:
 
-    1. Approve the Private Endpoint Connection:
+    1. ⚠️  CRITICAL: Configure IBM MQ Server Firewall
+       Add Application Gateway subnet to MQ firewall allow list:
+       - App Gateway Subnet: ${var.appgw_subnet_prefix}
+
+       Example (Linux iptables):
+         sudo iptables -A INPUT -p tcp --dport 1414 -s ${var.appgw_subnet_prefix} -j ACCEPT
+
+       Example (Windows):
+         New-NetFirewallRule -DisplayName "IBM MQ - App Gateway" `
+           -Direction Inbound -Protocol TCP -LocalPort 1414 `
+           -RemoteAddress ${var.appgw_subnet_prefix} -Action Allow
+
+       See TCP-PROXY-SETUP.md for more firewall examples.
+
+    2. Approve the Private Endpoint Connection:
        - Go to Azure Portal → Application Gateway → Private Link Center
        - Find the pending connection from Confluent Cloud
        - Click "Approve"
@@ -129,6 +147,7 @@ output "setup_instructions" {
     - Resource Group: ${local.resource_group_name}
     - VNet: ${local.vnet_name}
     - App Gateway: ${azurerm_application_gateway.main.name}
+    - App Gateway Subnet: ${var.appgw_subnet_prefix} ⚠️  Add to MQ firewall!
     - Private Link IP: ${cidrhost(var.appgw_subnet_prefix, 50)}
     - Frontend Port: ${var.ibm_mq_frontend_port}
     - Backend Targets: ${length(var.ibm_mq_backend_targets) > 0 ? join(", ", var.ibm_mq_backend_targets) : "⚠️  None configured!"}
