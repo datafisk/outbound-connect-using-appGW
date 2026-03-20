@@ -117,19 +117,24 @@ output "setup_instructions" {
 
     Next Steps:
 
-    1. ⚠️  CRITICAL: Configure IBM MQ Server Firewall
-       Add Application Gateway subnet to MQ firewall allow list:
-       - App Gateway Subnet: ${var.appgw_subnet_prefix}
+    1. ⚠️  CRITICAL: Configure IBM MQ Server Access
+       App Gateway Subnet: ${var.appgw_subnet_prefix}
 
-       Example (Linux iptables):
+       Step 1 - OS Firewall (Linux iptables):
          sudo iptables -A INPUT -p tcp --dport 1414 -s ${var.appgw_subnet_prefix} -j ACCEPT
 
-       Example (Windows):
+       Step 1 - OS Firewall (Windows):
          New-NetFirewallRule -DisplayName "IBM MQ - App Gateway" `
            -Direction Inbound -Protocol TCP -LocalPort 1414 `
            -RemoteAddress ${var.appgw_subnet_prefix} -Action Allow
 
-       See TCP-PROXY-SETUP.md for more firewall examples.
+       Step 2 - MQ Channel Authentication (REQUIRED):
+         runmqsc QM1 << EOF
+         SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
+         REFRESH SECURITY TYPE(SSL)
+         EOF
+
+       See TCP-PROXY-SETUP.md for complete configuration details.
 
     2. Approve the Private Endpoint Connection:
        - Go to Azure Portal → Application Gateway → Private Link Center

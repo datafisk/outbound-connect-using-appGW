@@ -229,16 +229,58 @@ New-NetFirewallRule -DisplayName "IBM MQ - App Gateway" `
 Get-NetFirewallRule -DisplayName "IBM MQ - App Gateway" | Get-NetFirewallAddressFilter
 ```
 
-#### IBM MQ Connection Authentication (CONNAUTHENTICATION)
+#### IBM MQ Channel Authentication (CHLAUTH) ⚠️ REQUIRED
 
-If using MQ connection authentication, add the Application Gateway subnet:
+IBM MQ requires channel authentication rules to allow connections from the Application Gateway subnet.
+
+**For the example connector configuration (channel: CONFLUENT.CHL):**
+
+```bash
+# Allow connections from App Gateway subnet and map to 'confluent' user
+runmqsc QM1 << EOF
+SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
+REFRESH SECURITY TYPE(SSL)
+EOF
+```
+
+**For the default IBM MQ Developer channel (DEV.APP.SVRCONN):**
 
 ```bash
 # Allow connections from App Gateway subnet
 runmqsc QM1 << EOF
-SET CHLAUTH('DEV.APP.SVRCONN') TYPE(ADDRESSMAP) ADDRESS('172.200.9.*') USERSRC(CHANNEL) CHCKCLNT(OPTIONAL)
-REFRESH SECURITY TYPE(CONNAUTH)
+SET CHLAUTH('DEV.APP.SVRCONN') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(CHANNEL) CHCKCLNT(OPTIONAL)
+REFRESH SECURITY TYPE(SSL)
 EOF
+```
+
+**Explanation:**
+- `TYPE(ADDRESSMAP)` - Map specific IP addresses to user identities
+- `ADDRESS('172.200.*')` - Allow from entire 172.200.0.0/16 range (adjust to match your subnet)
+- `USERSRC(MAP)` - Use mapped user from MCAUSER
+- `MCAUSER('confluent')` - Run connections as this MQ user (must exist)
+- `USERSRC(CHANNEL)` - Use the user ID from the channel definition (for DEV channel)
+- `CHCKCLNT(OPTIONAL)` - Client certificate is optional
+
+**Verify channel authentication:**
+
+```bash
+# Display all channel authentication records
+echo "DISPLAY CHLAUTH('CONFLUENT.CHL')" | runmqsc QM1
+
+# Or display all
+echo "DISPLAY CHLAUTH(*)" | runmqsc QM1
+```
+
+**Create the 'confluent' user if needed:**
+
+```bash
+# Linux/Unix
+sudo useradd -r -c "Confluent MQ User" -d /var/mqm confluent
+sudo usermod -aG mqm confluent
+
+# Windows
+net user confluent ConfluentP@ss123 /add
+# Then add to mqm group via Computer Management
 ```
 
 #### Azure Network Security Group (NSG)
@@ -386,10 +428,26 @@ cp ibm-mq-source.env.example ibm-mq-source.env
    echo "DISPLAY LISTENER(*)" | runmqsc QM1
    ```
 
-6. **Review IBM MQ channel authentication**
+6. **Review IBM MQ channel authentication** ⚠️ Common Issue
    ```bash
-   # Check channel authentication records
+   # Check channel authentication records for your channel
+   echo "DISPLAY CHLAUTH('CONFLUENT.CHL')" | runmqsc QM1
+
+   # Check all channel auth records
    echo "DISPLAY CHLAUTH(*)" | runmqsc QM1
+   ```
+
+   **Common error**: Channel blocked by CHLAUTH rules
+   - **Symptom**: Connection refused or MQRC_NOT_AUTHORIZED (2035)
+   - **Solution**: Add ADDRESSMAP rule (see Step 1 above)
+
+   **If you see blocking rules:**
+   ```bash
+   # Example output showing a blocking rule:
+   # CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('*') ACTION(BLOCK)
+
+   # You must add an ALLOW rule for your App Gateway subnet:
+   SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
    ```
 
 ### Connection Times Out
@@ -445,6 +503,34 @@ cp ibm-mq-source.env.example ibm-mq-source.env
    # Review connection auth settings
    echo "DISPLAY AUTHINFO(*)" | runmqsc QM1
    ```
+
+### Common IBM MQ Error Codes
+
+**MQRC_NOT_AUTHORIZED (2035)**
+- **Cause**: Channel authentication blocking the connection
+- **Solution**: Add CHLAUTH rule for App Gateway subnet (see Step 1)
+- **Verify**:
+  ```bash
+  echo "DISPLAY CHLAUTH('CONFLUENT.CHL')" | runmqsc QM1
+  ```
+
+**MQRC_CHANNEL_NOT_AVAILABLE (2537)**
+- **Cause**: Channel not running or not defined
+- **Solution**: Start the channel
+  ```bash
+  echo "START CHANNEL('CONFLUENT.CHL') CHLTYPE(SVRCONN)" | runmqsc QM1
+  ```
+
+**MQRC_CONNECTION_BROKEN (2009)**
+- **Cause**: Firewall blocking connection or SSL/TLS mismatch
+- **Solution**:
+  - Verify OS firewall allows App Gateway subnet
+  - Check SSL cipher specs match
+  - Review MQ error logs: `/var/mqm/qmgrs/QM1/errors/AMQERR*.LOG`
+
+**MQRC_HOST_NOT_AVAILABLE (2538)**
+- **Cause**: Network connectivity issue
+- **Solution**: Verify App Gateway can reach MQ server (see connectivity tests above)
 
 ---
 
