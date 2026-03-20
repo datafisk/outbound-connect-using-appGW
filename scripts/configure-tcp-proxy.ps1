@@ -66,11 +66,13 @@ Write-Host ""
 
 # Configure TCP components
 Write-Host "🔧 Configuring TCP components..." -ForegroundColor Yellow
-Write-Host "⏳ This may take 5-10 minutes..." -ForegroundColor Yellow
+Write-Host "⏳ This may take 10-12 minutes (2 Application Gateway updates)..." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Strategy: Batch changes to maintain at least one listener during transition" -ForegroundColor Cyan
 Write-Host ""
 
 # Step 1: Create TCP Listener
-Write-Host "1️⃣  Creating TCP listener..." -ForegroundColor Cyan
+Write-Host "1️⃣  Adding TCP listener to configuration..." -ForegroundColor Cyan
 $frontendIP = $appgw.FrontendIpConfigurations | Where-Object { $_.Name -eq "appgw-frontend-private" }
 $frontendPort = $appgw.FrontendPorts | Where-Object { $_.Name -eq "ibm-mq-port" }
 
@@ -81,52 +83,36 @@ Add-AzApplicationGatewayListener `
     -FrontendIPConfiguration $frontendIP `
     -FrontendPort $frontendPort | Out-Null
 
-Write-Host "   ✓ TCP listener created" -ForegroundColor Green
+Write-Host "   ✓ TCP listener added to configuration" -ForegroundColor Green
 
-# Step 2: Update Health Probe to TCP
-Write-Host "2️⃣  Updating health probe to TCP..." -ForegroundColor Cyan
-$appgw = Set-AzApplicationGatewayProbeConfig `
+# Step 2: Create new TCP Health Probe
+Write-Host "2️⃣  Adding TCP health probe to configuration..." -ForegroundColor Cyan
+Add-AzApplicationGatewayProbeConfig `
     -ApplicationGateway $appgw `
-    -Name $probe.Name `
+    -Name "ibm-mq-tcp-probe" `
     -Protocol Tcp `
     -Port 1414 `
     -Interval 30 `
     -Timeout 30 `
-    -UnhealthyThreshold 3
+    -UnhealthyThreshold 3 | Out-Null
 
-Write-Host "   ✓ Health probe updated to TCP" -ForegroundColor Green
+$tcpProbe = $appgw.Probes | Where-Object { $_.Name -eq "ibm-mq-tcp-probe" }
+Write-Host "   ✓ TCP health probe added to configuration" -ForegroundColor Green
 
 # Step 3: Create TCP Backend Settings
-Write-Host "3️⃣  Creating TCP backend settings..." -ForegroundColor Cyan
+Write-Host "3️⃣  Adding TCP backend settings to configuration..." -ForegroundColor Cyan
 Add-AzApplicationGatewayBackendSetting `
     -ApplicationGateway $appgw `
     -Name "ibm-mq" `
     -Port 1414 `
     -Protocol Tcp `
     -Timeout 20 `
-    -Probe $probe | Out-Null
+    -Probe $tcpProbe | Out-Null
 
-Write-Host "   ✓ TCP backend settings created" -ForegroundColor Green
+Write-Host "   ✓ TCP backend settings added to configuration" -ForegroundColor Green
 
-# Apply changes to Azure
-Write-Host ""
-Write-Host "4️⃣  Applying configuration changes..." -ForegroundColor Cyan
-Write-Host "   ⏳ Updating Application Gateway (this takes 5-7 minutes)..." -ForegroundColor Yellow
-
-try {
-    $appgw = Set-AzApplicationGateway -ApplicationGateway $appgw
-    Write-Host "   ✓ Configuration applied successfully" -ForegroundColor Green
-} catch {
-    Write-Host "   ❌ Error applying configuration" -ForegroundColor Red
-    Write-Host $_.Exception.Message -ForegroundColor Red
-    exit 1
-}
-
-# Reload configuration
-$appgw = Get-AzApplicationGateway -ResourceGroupName $ResourceGroup -Name $AppGatewayName
-
-# Step 5: Create TCP Routing Rule
-Write-Host "5️⃣  Creating TCP routing rule..." -ForegroundColor Cyan
+# Step 4: Create TCP Routing Rule
+Write-Host "4️⃣  Adding TCP routing rule to configuration..." -ForegroundColor Cyan
 $tcpListener = $appgw.Listeners | Where-Object { $_.Name -eq "ibm-mq-listener" }
 $backendPool = $appgw.BackendAddressPools | Where-Object { $_.Name -eq "ibm-mq-backend-pool" }
 $backendSettings = $appgw.BackendSettingsCollection | Where-Object { $_.Name -eq "ibm-mq" }
@@ -140,18 +126,38 @@ Add-AzApplicationGatewayRoutingRule `
     -BackendAddressPool $backendPool `
     -BackendSettings $backendSettings | Out-Null
 
-Write-Host "   ✓ TCP routing rule created" -ForegroundColor Green
+Write-Host "   ✓ TCP routing rule added to configuration" -ForegroundColor Green
 
-# Apply routing rule
+# Step 5: Remove old HTTP routing rule (from config, not yet applied)
+Write-Host "5️⃣  Removing HTTP routing rule from configuration..." -ForegroundColor Cyan
+$httpRule = $appgw.RequestRoutingRules | Where-Object { $_.Name -eq "ibm-mq-private-routing-rule" }
+if ($httpRule) {
+    Remove-AzApplicationGatewayRequestRoutingRule `
+        -ApplicationGateway $appgw `
+        -Name $httpRule.Name | Out-Null
+    Write-Host "   ✓ HTTP routing rule removed from configuration" -ForegroundColor Green
+}
+
+# Step 6: Remove old HTTP listener (from config, not yet applied)
+Write-Host "6️⃣  Removing HTTP listener from configuration..." -ForegroundColor Cyan
+if ($httpListener) {
+    Remove-AzApplicationGatewayHttpListener `
+        -ApplicationGateway $appgw `
+        -Name $httpListener.Name | Out-Null
+    Write-Host "   ✓ HTTP listener removed from configuration" -ForegroundColor Green
+}
+
+# Apply all changes atomically
 Write-Host ""
-Write-Host "6️⃣  Applying routing rule..." -ForegroundColor Cyan
+Write-Host "7️⃣  Applying all configuration changes..." -ForegroundColor Cyan
 Write-Host "   ⏳ Updating Application Gateway (this takes 5-7 minutes)..." -ForegroundColor Yellow
+Write-Host "   This creates TCP components and removes HTTP listener/rule in one operation" -ForegroundColor Yellow
 
 try {
     $appgw = Set-AzApplicationGateway -ApplicationGateway $appgw
-    Write-Host "   ✓ Routing rule applied successfully" -ForegroundColor Green
+    Write-Host "   ✓ Configuration applied successfully" -ForegroundColor Green
 } catch {
-    Write-Host "   ❌ Error applying routing rule" -ForegroundColor Red
+    Write-Host "   ❌ Error applying configuration" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     exit 1
 }
@@ -159,32 +165,22 @@ try {
 # Reload configuration
 $appgw = Get-AzApplicationGateway -ResourceGroupName $ResourceGroup -Name $AppGatewayName
 
-# Step 7: Delete old HTTP routing rule
-Write-Host "7️⃣  Removing old HTTP routing rule..." -ForegroundColor Cyan
-$httpRule = $appgw.RequestRoutingRules | Where-Object { $_.Name -eq "ibm-mq-private-routing-rule" }
-if ($httpRule) {
-    Remove-AzApplicationGatewayRequestRoutingRule `
-        -ApplicationGateway $appgw `
-        -Name $httpRule.Name | Out-Null
-    Write-Host "   ✓ HTTP routing rule removed" -ForegroundColor Green
-}
-
-# Step 8: Delete old HTTP listener
-Write-Host "8️⃣  Removing old HTTP listener..." -ForegroundColor Cyan
-if ($httpListener) {
-    Remove-AzApplicationGatewayHttpListener `
-        -ApplicationGateway $appgw `
-        -Name $httpListener.Name | Out-Null
-    Write-Host "   ✓ HTTP listener removed" -ForegroundColor Green
-}
-
-# Step 9: Delete old HTTP backend settings
-Write-Host "9️⃣  Removing old HTTP backend settings..." -ForegroundColor Cyan
+# Step 8: Clean up remaining HTTP components (backend settings and probe)
+Write-Host "8️⃣  Removing old HTTP backend settings from configuration..." -ForegroundColor Cyan
 if ($httpSettings) {
     Remove-AzApplicationGatewayBackendHttpSetting `
         -ApplicationGateway $appgw `
         -Name $httpSettings.Name | Out-Null
-    Write-Host "   ✓ HTTP backend settings removed" -ForegroundColor Green
+    Write-Host "   ✓ HTTP backend settings removed from configuration" -ForegroundColor Green
+}
+
+# Step 9: Delete old HTTP health probe
+Write-Host "9️⃣  Removing old HTTP health probe from configuration..." -ForegroundColor Cyan
+if ($probe) {
+    Remove-AzApplicationGatewayProbeConfig `
+        -ApplicationGateway $appgw `
+        -Name $probe.Name | Out-Null
+    Write-Host "   ✓ HTTP health probe removed from configuration" -ForegroundColor Green
 }
 
 # Final apply to clean up old components
@@ -207,7 +203,7 @@ Write-Host ""
 Write-Host "Configuration Summary:" -ForegroundColor Cyan
 Write-Host "  ✓ TCP Listener created (ibm-mq-listener)"
 Write-Host "  ✓ TCP Backend Settings created (ibm-mq)"
-Write-Host "  ✓ TCP Health Probe updated ($($probe.Name))"
+Write-Host "  ✓ TCP Health Probe created (ibm-mq-tcp-probe)"
 Write-Host "  ✓ TCP Routing Rule created (ibm-mq-routing-rule)"
 Write-Host "  ✓ Old HTTP components removed"
 Write-Host ""
