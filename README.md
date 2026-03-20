@@ -299,184 +299,33 @@ The connector automatically uses the DNS name (if created) or the private endpoi
 
 **Note**: MQ passwords are optional. If your IBM MQ server is configured to allow unauthenticated connections, you can leave the password empty. This might be acceptable when relying on network-level security (Private Link, NSG), though using credentials provides defense-in-depth and is a likely setup in any production environment.
 
-**SSL/TLS Support**: Configure `mq_ssl_*` variables in `terraform.tfvars` for SSL/TLS connections to IBM MQ.
+### SSL/TLS Support (Optional)
 
-### Generating SSL/TLS Keystores (Optional)
-
-If your IBM MQ server requires SSL/TLS, you'll need to generate keystore and truststore files. Here's how:
-
-#### 1. Create IBM MQ Server Certificate and Truststore
-
-**On the IBM MQ Server:**
+For mutual TLS authentication between the connector and IBM MQ, use the automated setup script:
 
 ```bash
-# Create MQ key database (if not exists)
-runmqakm -keydb -create -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
-  -pw your-mq-keydb-password -type cms -stash
-
-# Create a self-signed certificate for the MQ server
-runmqakm -cert -create -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
-  -stashed -label ibmmqserver \
-  -dn "CN=mq-server.example.com,OU=IT,O=YourOrg,C=US" \
-  -size 2048 -expire 365
-
-# Export the server certificate (to import into connector truststore)
-runmqakm -cert -extract -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
-  -stashed -label ibmmqserver \
-  -target mq-server-cert.pem -format ascii
-
-# Configure the queue manager to use SSL
-# Add to qm.ini: CERTLABL=ibmmqserver
+# On the IBM MQ server
+./scripts/setup-mutual-tls.sh
 ```
 
-**On the Connector Side (create truststore):**
+This creates:
+- Self-signed Certificate Authority
+- IBM MQ server certificate (signed by CA)
+- Confluent connector client certificate (signed by CA)
+- Java keystores (keystore.jks, truststore.jks)
+- Configures IBM MQ for mutual TLS
 
-```bash
-# Import the IBM MQ server's certificate into a truststore
-# This allows the connector to trust the MQ server
-keytool -import -trustcacerts -alias ibm-mq-server \
-  -file /path/to/mq-server-cert.pem \
-  -keystore truststore.jks \
-  -storepass your-truststore-password
+Then configure the connector in `terraform.tfvars`:
+
+```hcl
+mq_ssl_cipher_suite = "SSL_RSA_WITH_AES_128_CBC_SHA256"
+mq_ssl_keystore_location = "<path-to-keystore>"
+mq_ssl_keystore_password = "connector-keystore-123"
+mq_ssl_truststore_location = "<path-to-truststore>"
+mq_ssl_truststore_password = "connector-truststore-123"
 ```
 
-#### 2. Create a Keystore with CA-signed Certificate (if mutual TLS is required)
-
-**Option A: Using an existing CA**
-
-```bash
-# Generate a Certificate Signing Request (CSR)
-keytool -certreq -alias client-key \
-  -keystore keystore.jks \
-  -storepass your-keystore-password \
-  -file client-cert.csr
-
-# Send client-cert.csr to your CA for signing
-# Then import the CA certificate and signed certificate back
-
-# Import the CA certificate
-keytool -import -trustcacerts -alias ca-cert \
-  -file /path/to/ca-cert.pem \
-  -keystore keystore.jks \
-  -storepass your-keystore-password
-
-# Import the signed client certificate
-keytool -import -alias client-key \
-  -file /path/to/signed-client-cert.pem \
-  -keystore keystore.jks \
-  -storepass your-keystore-password
-```
-
-**Option B: Create a self-signed CA for testing**
-
-```bash
-# Generate CA key and certificate
-keytool -genkeypair -alias ca-cert \
-  -keyalg RSA -keysize 4096 \
-  -validity 3650 \
-  -keystore ca-keystore.jks \
-  -storepass ca-password \
-  -dname "CN=Internal CA,OU=IT,O=YourOrg,C=US"
-
-# Export the CA certificate
-keytool -export -alias ca-cert \
-  -file ca-cert.pem \
-  -keystore ca-keystore.jks \
-  -storepass ca-password
-
-# Generate client key pair
-keytool -genkeypair -alias client-key \
-  -keyalg RSA -keysize 2048 \
-  -validity 365 \
-  -keystore keystore.jks \
-  -storepass your-keystore-password \
-  -dname "CN=confluent-connector,OU=IT,O=YourOrg,C=US"
-
-# Create CSR
-keytool -certreq -alias client-key \
-  -keystore keystore.jks \
-  -storepass your-keystore-password \
-  -file client-cert.csr
-
-# Sign the client certificate with CA
-keytool -gencert -alias ca-cert \
-  -keystore ca-keystore.jks \
-  -storepass ca-password \
-  -infile client-cert.csr \
-  -outfile signed-client-cert.pem \
-  -validity 365
-
-# Import CA certificate into client keystore
-keytool -import -trustcacerts -alias ca-cert \
-  -file ca-cert.pem \
-  -keystore keystore.jks \
-  -storepass your-keystore-password
-
-# Import signed certificate into client keystore
-keytool -import -alias client-key \
-  -file signed-client-cert.pem \
-  -keystore keystore.jks \
-  -storepass your-keystore-password
-```
-
-#### 3. Configure IBM MQ Server for Mutual TLS (if required)
-
-If using mutual TLS authentication, import the CA certificate that signed the client certificates:
-
-```bash
-# Import the CA certificate into MQ's key database
-# MQ will trust any client certificate signed by this CA
-runmqakm -cert -add -db /var/mqm/qmgrs/QM1/ssl/key.kdb \
-  -stashed -label ca-cert \
-  -file /path/to/ca-cert.pem -format ascii
-
-# Configure the server connection channel for SSL/TLS with client authentication
-runmqsc QM1 << EOF
-ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCIPH(TLS_RSA_WITH_AES_128_CBC_SHA256)
-ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCAUTH(REQUIRED)
-REFRESH SECURITY TYPE(SSL)
-EOF
-```
-
-**For server-only SSL (no client certificate validation):**
-
-```bash
-# Configure the server connection channel for SSL/TLS without client authentication
-runmqsc QM1 << EOF
-ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCIPH(TLS_RSA_WITH_AES_128_CBC_SHA256)
-ALTER CHANNEL(DEV.APP.SVRCONN) CHLTYPE(SVRCONN) SSLCAUTH(OPTIONAL)
-REFRESH SECURITY TYPE(SSL)
-EOF
-```
-
-**Notes**:
-- By importing the CA certificate, MQ trusts **all** client certificates signed by that CA
-- This is more scalable than importing individual client certificates
-- The MQ server certificate (created in step 1) uses label `ibmmqserver`
-- Adjust paths according to your MQ installation
-- `SSLCAUTH(REQUIRED)` enforces mutual TLS authentication
-- `SSLCAUTH(OPTIONAL)` allows connections with or without client certificates
-- The cipher spec name may differ slightly between MQ and Java
-- Restart the queue manager after SSL configuration changes
-
-#### 4. Configure in `ibm-mq-source.env`
-
-```bash
-MQ_SSL_CIPHER_SUITE=TLS_RSA_WITH_AES_128_CBC_SHA256
-MQ_SSL_KEYSTORE_LOCATION=/path/to/keystore.jks
-MQ_SSL_KEYSTORE_PASSWORD=your-keystore-password
-MQ_SSL_TRUSTSTORE_LOCATION=/path/to/truststore.jks
-MQ_SSL_TRUSTSTORE_PASSWORD=your-truststore-password
-```
-
-**Note**: The keystore/truststore files must be accessible to the Confluent Cloud connector. You may need to upload them as connector configuration files or use a supported secrets manager.
-
-**Common IBM MQ Cipher Suites**:
-- `TLS_RSA_WITH_AES_128_CBC_SHA256`
-- `TLS_RSA_WITH_AES_256_CBC_SHA256`
-- `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256`
-
-Consult your IBM MQ administrator for the correct cipher suite to use.
+**For complete SSL/TLS setup instructions**, including certificate management, troubleshooting, and production best practices, see [SSL-TLS-SETUP.md](SSL-TLS-SETUP.md).
 
 ## Cost Estimate
 
