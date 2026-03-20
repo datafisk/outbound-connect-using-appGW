@@ -283,6 +283,60 @@ net user confluent ConfluentP@ss123 /add
 # Then add to mqm group via Computer Management
 ```
 
+#### IBM MQ Connection Authentication (CONNAUTH) ⚠️ IMPORTANT
+
+**Confluent Cloud Connector Requirement:**
+The Confluent IBM MQ connector **mandates** a username to be set in the configuration, even if your MQ server doesn't require authentication. This can cause issues if MQ authentication checking is set to `OPTIONAL`.
+
+**Recommended Configuration:**
+
+If you're relying on network-level security (Private Link, NSG, CHLAUTH) and don't need MQ password validation, set connection authentication checking to `NONE`:
+
+```bash
+# Disable connection authentication checking
+runmqsc QM1 << EOF
+ALTER AUTHINFO(SYSTEM.DEFAULT.AUTHINFO.IDPWOS) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)
+REFRESH SECURITY TYPE(CONNAUTH)
+EOF
+```
+
+**For IBM MQ Developer Edition:**
+
+```bash
+# Developer edition typically uses DEV.AUTHINFO
+runmqsc QM1 << EOF
+ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)
+REFRESH SECURITY TYPE(CONNAUTH)
+EOF
+```
+
+**Verify the configuration:**
+
+```bash
+# Display current connection authentication settings
+echo "DISPLAY AUTHINFO(*)" | runmqsc QM1
+
+# Check queue manager's CONNAUTH setting
+echo "DISPLAY QMGR CONNAUTH" | runmqsc QM1
+```
+
+**Options Explained:**
+- `CHCKCLNT(NONE)` - Don't validate client credentials (network security only)
+- `CHCKCLNT(OPTIONAL)` - Validate if credentials provided ⚠️ **Don't use with Confluent connector**
+- `CHCKCLNT(REQUIRED)` - Always validate credentials (need valid OS users)
+- `CHCKCLNT(REQDADM)` - Validate for privileged users only
+
+**Why CHCKCLNT(NONE) is recommended for this setup:**
+- Confluent connector always sends a username (cannot be disabled)
+- With `CHCKCLNT(OPTIONAL)`, MQ will attempt to validate the username/password
+- If validation fails, connection is rejected even though security is handled by Private Link
+- `CHCKCLNT(NONE)` accepts any username without validation
+- Security is enforced by:
+  - Azure Private Link (network isolation)
+  - Application Gateway subnet restrictions
+  - IBM MQ CHLAUTH rules (IP-based access control)
+  - Azure NSG rules
+
 #### Azure Network Security Group (NSG)
 
 Verify the backend subnet (where IBM MQ runs) allows traffic from App Gateway:
@@ -507,12 +561,27 @@ cp ibm-mq-source.env.example ibm-mq-source.env
 ### Common IBM MQ Error Codes
 
 **MQRC_NOT_AUTHORIZED (2035)**
-- **Cause**: Channel authentication blocking the connection
-- **Solution**: Add CHLAUTH rule for App Gateway subnet (see Step 1)
-- **Verify**:
-  ```bash
-  echo "DISPLAY CHLAUTH('CONFLUENT.CHL')" | runmqsc QM1
-  ```
+- **Cause 1**: Channel authentication blocking the connection
+  - **Solution**: Add CHLAUTH rule for App Gateway subnet (see Step 1)
+  - **Verify**:
+    ```bash
+    echo "DISPLAY CHLAUTH('CONFLUENT.CHL')" | runmqsc QM1
+    ```
+- **Cause 2**: Connection authentication validation failure
+  - **Symptom**: Error even with valid CHLAUTH rules
+  - **Root Cause**: Confluent connector sends username, MQ set to CHCKCLNT(OPTIONAL) tries to validate
+  - **Solution**: Set connection authentication to CHCKCLNT(NONE)
+    ```bash
+    runmqsc QM1 << EOF
+    ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)
+    REFRESH SECURITY TYPE(CONNAUTH)
+    EOF
+    ```
+  - **Verify**:
+    ```bash
+    echo "DISPLAY AUTHINFO(DEV.AUTHINFO)" | runmqsc QM1
+    echo "DISPLAY QMGR CONNAUTH" | runmqsc QM1
+    ```
 
 **MQRC_CHANNEL_NOT_AVAILABLE (2537)**
 - **Cause**: Channel not running or not defined
