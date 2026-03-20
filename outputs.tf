@@ -128,12 +128,12 @@ output "setup_instructions" {
            -Direction Inbound -Protocol TCP -LocalPort 1414 `
            -RemoteAddress ${var.appgw_subnet_prefix} -Action Allow
 
-       Step 2 - MQ Channel Authentication (REQUIRED):
+       Step 2 - MQ Channel Authentication:
          runmqsc QM1 << EOF
          SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
          EOF
 
-       Step 3 - MQ Connection Authentication (RECOMMENDED):
+       Step 3 - MQ Connection Authentication:
          # Confluent connector requires username - set CHCKCLNT to NONE to avoid validation
          runmqsc QM1 << EOF
          ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)

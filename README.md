@@ -22,32 +22,45 @@ Backend Resources (IBM MQ, SQL, APIs, etc.)
 
 ### Azure Infrastructure
 - ✅ Azure Application Gateway Standard v2 with Private Link configuration
-- ✅ **Automated TCP/TLS proxy configuration via PowerShell** ⭐ NEW
+- ✅ **Automated TCP/TLS proxy configuration via PowerShell**
 - ✅ Complete VNet setup with dedicated subnets
-- ✅ **Support for existing Azure Resource Groups, VNets, and Subnets**
+- ✅ Support for existing Azure Resource Groups, VNets, and Subnets
 - ✅ Network Security Groups with required rules
 - ✅ Production-ready security settings
-- ✅ Public IP blocked from all incoming traffic
+- ✅ Private-only access (no public listener configured)
 
 ### Confluent Cloud Integration
-- ✅ **Automated Confluent Cloud egress endpoint provisioning**
-- ✅ **Support for existing Confluent Cloud Networks and Attachments**
+- ✅ Automated Confluent Cloud egress endpoint provisioning
+- ✅ Support for existing Confluent Cloud Networks and Attachments
 - ✅ Private Link Service for Confluent Cloud integration
-- ✅ **Automated DNS record creation for access points**
-- ✅ **Automated IBM MQ Source connector deployment via Terraform** ⭐ NEW
+- ✅ Automated DNS record creation for access points
+- ✅ Automated IBM MQ Source connector deployment via Terraform
 
 ### Flexibility
 - ✅ Flexible backend pool configuration (IP addresses or FQDNs)
 - ✅ Optional SSL/TLS support for backend connections
 - ✅ Configurable health probes and timeouts
 
-## ⚠️ Important Note: TCP/TLS Proxy Configuration
+## Security
+
+**Public IP Configuration:**
+Azure Application Gateway Standard v2 requires a public IP address for management operations, but this does not mean your gateway is exposed to the internet. In this configuration:
+
+- The Application Gateway has **no listener configured on the public IP**
+- Without a listener, the gateway **silently drops all incoming packets** to the public IP
+- All traffic flows through the **private frontend IP** via Private Link (Confluent Cloud → Private Endpoint → App Gateway Private IP → Backend)
+- The public IP is used only for Azure platform management traffic (health monitoring, updates)
+- For additional protection, you can apply **Azure DDoS Protection Standard** to the public IP address
+
+This design ensures your backend resources remain completely isolated from public internet access while maintaining Azure's management capabilities.
+
+## Important Note: TCP/TLS Proxy Configuration
 
 **As of March 18, 2026**, the Terraform azurerm provider (v4.64.0) does not yet support configuring TCP/TLS proxy settings for Application Gateway via code. While Azure Application Gateway Standard v2 fully supports TCP/TLS proxy for non-HTTP protocols like IBM MQ, you need to configure TCP components after deployment.
 
 **We provide two options:**
 
-### Option 1: Automated PowerShell Script ⭐ RECOMMENDED
+### Option 1: Automated PowerShell Script
 - **Time**: 15-20 minutes (fully automated)
 - **Prerequisites**: PowerShell with Az module
 - **Usage**:
@@ -144,13 +157,13 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
 - `terraform.tfvars.example` - Example configuration with all required variables
 
 ### Automation Scripts
-- `scripts/configure-tcp-proxy.ps1` - **PowerShell TCP proxy automation** ⭐ RECOMMENDED
+- `scripts/configure-tcp-proxy.ps1` - PowerShell TCP proxy automation
 - `scripts/configure-tcp-proxy.sh` - Bash helper script with portal instructions
 
 ### Documentation
-- `TCP-PROXY-SETUP.md` - **TCP/TLS proxy setup guide (PowerShell + Portal)** ⭐
-- `CONFLUENT-SETUP.md` - **Confluent Cloud credential setup guide** ⭐
-- `EXISTING-RESOURCES.md` - **Using existing Resource Groups/VNets/Subnets** ⭐
+- `TCP-PROXY-SETUP.md` - TCP/TLS proxy setup guide (PowerShell + Portal)
+- `CONFLUENT-SETUP.md` - Confluent Cloud credential setup guide
+- `EXISTING-RESOURCES.md` - Using existing Resource Groups/VNets/Subnets
 - `SETUP.md` - Detailed step-by-step guide
 
 **IBM MQ Connector**: Optionally deployed via Terraform by setting `create_connector = true`
@@ -222,7 +235,7 @@ For the example configuration to work, your IBM MQ server must be configured wit
     - See TCP-PROXY-SETUP.md for complete configuration
 - **Authentication**: ⚠️ **Important Confluent Connector Requirement**
   - The Confluent connector **requires** a username to be set (even if blank password)
-  - **Recommended**: Set MQ connection authentication to `CHCKCLNT(NONE)` to avoid validation issues
+  - Set MQ connection authentication to `CHCKCLNT(NONE)` to avoid validation issues
   - Command: `ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)`
   - This allows network-level security (Private Link + CHLAUTH) without credential validation
   - Alternative: Create valid OS users for the connector credentials
