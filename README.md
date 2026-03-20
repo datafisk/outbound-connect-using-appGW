@@ -220,9 +220,13 @@ For the example configuration to work, your IBM MQ server must be configured wit
       SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
       ```
     - See TCP-PROXY-SETUP.md for complete configuration
-- **Authentication**: Optional - can be configured for unauthenticated or authenticated access
-  - If using authentication, configure username/password in the connector
-  - If using unauthenticated, ensure the channel's MCAUSER is set appropriately
+- **Authentication**: ⚠️ **Important Confluent Connector Requirement**
+  - The Confluent connector **requires** a username to be set (even if blank password)
+  - **Recommended**: Set MQ connection authentication to `CHCKCLNT(NONE)` to avoid validation issues
+  - Command: `ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)`
+  - This allows network-level security (Private Link + CHLAUTH) without credential validation
+  - Alternative: Create valid OS users for the connector credentials
+  - See TCP-PROXY-SETUP.md for complete authentication configuration
 - **SSL/TLS**: Optional - configure cipher suite and keystores if required
 
 **Note**: All these values are configurable via the `ibm-mq-source.env` file. The defaults match IBM MQ Developer edition out-of-the-box settings.

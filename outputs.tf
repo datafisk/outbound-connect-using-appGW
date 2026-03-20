@@ -133,12 +133,20 @@ output "setup_instructions" {
          SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
          EOF
 
+       Step 3 - MQ Connection Authentication (RECOMMENDED):
+         # Confluent connector requires username - set CHCKCLNT to NONE to avoid validation
+         runmqsc QM1 << EOF
+         ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)
+         REFRESH SECURITY TYPE(CONNAUTH)
+         EOF
+
        See TCP-PROXY-SETUP.md for complete configuration details.
 
     2. Approve the Private Endpoint Connection:
        - Go to Azure Portal → Application Gateway → Private Link Center
        - Find the pending connection from Confluent Cloud
        - Click "Approve"
+       - Or use Azure CLI (see TCP-PROXY-SETUP.md)
 
     3. ${var.create_connector ? "IBM MQ Connector Status:" : "Deploy IBM MQ Connector:"}
        ${var.create_connector ? "✓ Connector deployed automatically: ${confluent_connector.ibm_mq_source[0].id}\n       ✓ Status: ${confluent_connector.ibm_mq_source[0].status}\n       ✓ Using ${var.create_dns_record ? "DNS: ${var.dns_domain}" : "IP: ${confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_ip_address}"}" : "- Set create_connector=true in terraform.tfvars\n       - Configure connector variables (kafka_cluster_id, MQ settings, etc.)\n       - Run: terraform apply\n       - Or manually deploy using Confluent Cloud UI with network: ${local.confluent_network_id}"}
