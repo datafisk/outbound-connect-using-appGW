@@ -239,9 +239,10 @@ IBM MQ requires channel authentication rules to allow connections from the Appli
 # Allow connections from App Gateway subnet and map to 'confluent' user
 runmqsc QM1 << EOF
 SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
-REFRESH SECURITY TYPE(SSL)
 EOF
 ```
+
+**Note**: CHLAUTH rules take effect immediately, no refresh needed.
 
 **For the default IBM MQ Developer channel (DEV.APP.SVRCONN):**
 
@@ -249,7 +250,6 @@ EOF
 # Allow connections from App Gateway subnet
 runmqsc QM1 << EOF
 SET CHLAUTH('DEV.APP.SVRCONN') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(CHANNEL) CHCKCLNT(OPTIONAL)
-REFRESH SECURITY TYPE(SSL)
 EOF
 ```
 
