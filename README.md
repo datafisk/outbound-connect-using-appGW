@@ -20,32 +20,62 @@ Backend Resources (IBM MQ, SQL, APIs, etc.)
 
 ## Features
 
+### Azure Infrastructure
 - ✅ Azure Application Gateway Standard v2 with Private Link configuration
+- ✅ **Automated TCP/TLS proxy configuration via PowerShell** ⭐ NEW
 - ✅ Complete VNet setup with dedicated subnets
 - ✅ **Support for existing Azure Resource Groups, VNets, and Subnets**
-- ✅ **Support for existing Confluent Cloud Networks and Attachments**
 - ✅ Network Security Groups with required rules
-- ✅ **Automated Confluent Cloud egress endpoint provisioning**
-- ✅ Private Link Service for Confluent Cloud integration
-- ✅ Example IBM MQ Source connector configuration
-- ✅ Flexible backend pool configuration
 - ✅ Production-ready security settings
 - ✅ Public IP blocked from all incoming traffic
 
+### Confluent Cloud Integration
+- ✅ **Automated Confluent Cloud egress endpoint provisioning**
+- ✅ **Support for existing Confluent Cloud Networks and Attachments**
+- ✅ Private Link Service for Confluent Cloud integration
+- ✅ **Automated DNS record creation for access points**
+- ✅ **Automated IBM MQ Source connector deployment via Terraform** ⭐ NEW
+
+### Flexibility
+- ✅ Flexible backend pool configuration (IP addresses or FQDNs)
+- ✅ Optional SSL/TLS support for backend connections
+- ✅ Configurable health probes and timeouts
+
 ## ⚠️ Important Note: TCP/TLS Proxy Configuration
 
-**As of March 18, 2026**, the Terraform azurerm provider (v4.64.0) does not yet support configuring TCP/TLS proxy settings for Application Gateway via code. While Azure Application Gateway Standard v2 fully supports TCP/TLS proxy for non-HTTP protocols like IBM MQ, you'll need to complete two manual configuration steps via Azure Portal after deployment:
+**As of March 18, 2026**, the Terraform azurerm provider (v4.64.0) does not yet support configuring TCP/TLS proxy settings for Application Gateway via code. While Azure Application Gateway Standard v2 fully supports TCP/TLS proxy for non-HTTP protocols like IBM MQ, you need to configure TCP components after deployment.
 
-1. Change health probe protocol from `Http` to `Tcp`
-2. Change backend settings protocol from `Http` to `Https`
+**We provide two options:**
 
-**See [TCP-PROXY-SETUP.md](TCP-PROXY-SETUP.md) for detailed instructions** (takes ~2 minutes via Azure Portal).
+### Option 1: Automated PowerShell Script ⭐ RECOMMENDED
+- **Time**: 15-20 minutes (fully automated)
+- **Prerequisites**: PowerShell with Az module
+- **Usage**:
+  ```powershell
+  .\scripts\configure-tcp-proxy.ps1 -ResourceGroup <name> -AppGatewayName <name>
+  ```
+- Or enable automatic configuration via Terraform:
+  ```hcl
+  # terraform.tfvars
+  auto_configure_tcp_proxy = true
+  ```
+
+### Option 2: Azure Portal (Manual)
+- **Time**: 20-30 minutes (manual, 8 steps)
+- **Guide**: Detailed step-by-step instructions in [TCP-PROXY-SETUP.md](TCP-PROXY-SETUP.md)
 
 This limitation is only in the Terraform provider - the Azure platform itself fully supports TCP/TLS proxy capabilities. Track the feature request here: [hashicorp/terraform-provider-azurerm#26239](https://github.com/hashicorp/terraform-provider-azurerm/issues/26239)
 
 ## Quick Start
 
-1. **Prerequisites**: Azure CLI (logged in) and Terraform 1.3+
+1. **Prerequisites**:
+   - Azure CLI (logged in)
+   - Terraform 1.3+
+   - PowerShell with Az module (for TCP proxy automation)
+     ```powershell
+     Install-Module -Name Az -AllowClobber -Scope CurrentUser
+     Connect-AzAccount
+     ```
 
 2. **Configure Confluent Cloud Credentials**:
    ```bash
@@ -61,28 +91,66 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
    terraform apply
    ```
 
-4. **Approve Private Link** (if needed):
-   - Azure Portal → Application Gateway → Private Link Center → Approve
+4. **Configure TCP/TLS Proxy** (choose one):
 
-5. **Configure TCP/TLS Proxy** (manual step):
-   - See [TCP-PROXY-SETUP.md](TCP-PROXY-SETUP.md) (~2 minutes)
+   **Option A: Automated (Recommended)**
+   ```powershell
+   # Authenticate PowerShell to Azure
+   Connect-AzAccount
 
-6. **(Optional) Deploy IBM MQ Connector**:
+   # Run the configuration script
+   .\scripts\configure-tcp-proxy.ps1 -ResourceGroup <rg-name> -AppGatewayName <appgw-name>
+   ```
+
+   **Option B: Terraform Integration**
+   ```hcl
+   # In terraform.tfvars, before initial apply
+   auto_configure_tcp_proxy = true
+   ```
+
+   **Option C: Manual Portal**
+   - See [TCP-PROXY-SETUP.md](TCP-PROXY-SETUP.md) for 8-step guide
+
+5. **Approve Private Endpoint Connection**:
+   ```bash
+   # Automated via Azure CLI
+   az network private-endpoint-connection approve \
+     --name <connection-name> --resource-group <rg-name> \
+     --resource-name <appgw-name> --type Microsoft.Network/applicationGateways
+   ```
+   Or via Azure Portal → Application Gateway → Private Link Center → Approve
+
+6. **Deploy Remaining Resources**:
+   ```bash
+   # After TCP proxy is configured and endpoint is approved
+   terraform apply
+   ```
+   This creates the DNS record and connector (if enabled).
+
+7. **(Optional) IBM MQ Connector**:
    - Set `create_connector = true` in `terraform.tfvars`
    - Configure connector variables (kafka_cluster_id, MQ settings, etc.)
-   - Run `terraform apply` to deploy the connector automatically
-   - Or deploy manually via Confluent Cloud UI using network ID from output
+   - The connector deploys automatically with step 6
+   - Check status: `terraform output connector_status`
 
 ## What's Included
 
+### Terraform Infrastructure
 - `main.tf` - Core Azure infrastructure (VNet, App Gateway, Private Link)
 - `confluent.tf` - **Confluent Cloud egress endpoint automation** ⭐
-- `variables.tf` - Customizable variables (Azure + Confluent)
+- `tcp-proxy-automation.tf` - **Optional Terraform-integrated TCP proxy automation** ⭐
+- `variables.tf` - Customizable variables (Azure + Confluent + Connector)
 - `outputs.tf` - Connection details and setup instructions
 - `terraform.tfvars.example` - Example configuration with all required variables
+
+### Automation Scripts
+- `scripts/configure-tcp-proxy.ps1` - **PowerShell TCP proxy automation** ⭐ RECOMMENDED
+- `scripts/configure-tcp-proxy.sh` - Bash helper script with portal instructions
+
+### Documentation
+- `TCP-PROXY-SETUP.md` - **TCP/TLS proxy setup guide (PowerShell + Portal)** ⭐
 - `CONFLUENT-SETUP.md` - **Confluent Cloud credential setup guide** ⭐
 - `EXISTING-RESOURCES.md` - **Using existing Resource Groups/VNets/Subnets** ⭐
-- `TCP-PROXY-SETUP.md` - **TCP/TLS proxy configuration guide** ⭐
 - `SETUP.md` - Detailed step-by-step guide
 
 **IBM MQ Connector**: Optionally deployed via Terraform by setting `create_connector = true`
