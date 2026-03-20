@@ -5,10 +5,20 @@
 # to help validate connector configurations.
 #
 # Usage:
-#   ./mq-message-generator.sh [queue_name] [queue_manager] [interval_seconds]
+#   ./mq-message-generator.sh [queue_name] [queue_manager] [interval_seconds] [ssl_mode]
 #
-# Example:
+# Examples:
+#   # Standard authentication (default)
 #   ./mq-message-generator.sh DEV.QUEUE.1 QM1 30
+#
+#   # With mutual TLS
+#   ./mq-message-generator.sh DEV.QUEUE.1 QM1 30 ssl
+#
+# Environment variables for SSL (when ssl_mode=ssl):
+#   MQSSLKEYR - Path to keystore (without .jks extension)
+#   MQ_CHANNEL - Channel name (default: CONFLUENT.CHL)
+#   MQ_HOST - MQ host (default: localhost)
+#   MQ_PORT - MQ port (default: 1414)
 #
 # Press Ctrl+C to stop
 
@@ -18,7 +28,13 @@ set -e
 QUEUE_NAME="${1:-DEV.QUEUE.1}"
 QM_NAME="${2:-QM1}"
 INTERVAL="${3:-30}"
+SSL_MODE="${4:-standard}"
 MESSAGE_COUNT=0
+
+# SSL configuration (used when SSL_MODE=ssl)
+MQ_CHANNEL="${MQ_CHANNEL:-CONFLUENT.CHL}"
+MQ_HOST="${MQ_HOST:-localhost}"
+MQ_PORT="${MQ_PORT:-1414}"
 
 echo "=========================================="
 echo "IBM MQ Message Generator"
@@ -28,6 +44,18 @@ echo "Configuration:"
 echo "  Queue:          ${QUEUE_NAME}"
 echo "  Queue Manager:  ${QM_NAME}"
 echo "  Interval:       ${INTERVAL} seconds"
+echo "  Authentication: ${SSL_MODE}"
+
+if [ "${SSL_MODE}" = "ssl" ]; then
+  echo "  SSL Channel:    ${MQ_CHANNEL}"
+  echo "  MQ Host:        ${MQ_HOST}:${MQ_PORT}"
+  if [ -n "${MQSSLKEYR}" ]; then
+    echo "  SSL Keystore:   ${MQSSLKEYR}"
+  else
+    echo "  SSL Keystore:   Not set (will use system default)"
+  fi
+fi
+
 echo ""
 echo "Press Ctrl+C to stop"
 echo ""
@@ -67,9 +95,18 @@ EOF
 put_message() {
   local message=$1
 
-  # Use amqsput to put the message
-  # Note: This uses local bindings (requires script to run on MQ server)
-  echo "${message}" | /opt/mqm/samp/bin/amqsput "${QUEUE_NAME}" "${QM_NAME}" > /dev/null 2>&1
+  if [ "${SSL_MODE}" = "ssl" ]; then
+    # Client mode with SSL
+    # Set environment variables for SSL connection
+    export MQSERVER="${MQ_CHANNEL}/TCP/${MQ_HOST}(${MQ_PORT})"
+
+    # Use amqsputc (client version) for SSL connections
+    echo "${message}" | /opt/mqm/samp/bin/amqsputc "${QUEUE_NAME}" "${QM_NAME}" > /dev/null 2>&1
+  else
+    # Local bindings (standard, no SSL)
+    # Use amqsput for local connections (requires script to run on MQ server)
+    echo "${message}" | /opt/mqm/samp/bin/amqsput "${QUEUE_NAME}" "${QM_NAME}" > /dev/null 2>&1
+  fi
 
   if [ $? -eq 0 ]; then
     return 0

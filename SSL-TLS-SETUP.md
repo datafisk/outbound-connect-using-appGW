@@ -116,11 +116,28 @@ The connector will now use mutual TLS to connect to IBM MQ.
 
 ## Step 5: Generate Test Messages
 
-To validate your connector configuration, use the message generator script to continuously put JSON messages onto the queue:
+To validate your connector configuration, use the message generator script to continuously put JSON messages onto the queue.
+
+### Standard Authentication (Default)
 
 ```bash
-# On the IBM MQ server
+# On the IBM MQ server - uses local bindings
 ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30
+```
+
+### With Mutual TLS
+
+```bash
+# Set keystore path (without .jks extension)
+export MQSSLKEYR=/path/to/ssl-certs/connector-keystore
+
+# Optional: customize connection details
+export MQ_CHANNEL=CONFLUENT.CHL
+export MQ_HOST=localhost
+export MQ_PORT=1414
+
+# Run with SSL mode
+./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30 ssl
 ```
 
 **What it does:**
@@ -128,6 +145,7 @@ To validate your connector configuration, use the message generator script to co
 - Puts messages onto the queue every 30 seconds (configurable)
 - Runs continuously until stopped with Ctrl+C
 - Shows message count and timestamps
+- Supports both standard and SSL/TLS authentication
 
 **Example output:**
 ```
@@ -139,6 +157,10 @@ Configuration:
   Queue:          DEV.QUEUE.1
   Queue Manager:  QM1
   Interval:       30 seconds
+  Authentication: ssl
+  SSL Channel:    CONFLUENT.CHL
+  MQ Host:        localhost:1414
+  SSL Keystore:   /path/to/ssl-certs/connector-keystore
 
 Press Ctrl+C to stop
 
@@ -151,14 +173,23 @@ Starting message generation...
 
 **Custom usage:**
 ```bash
-# Different queue
+# Standard mode - different queue
 ./scripts/mq-message-generator.sh MY.QUEUE QM1 30
 
-# Faster interval (10 seconds)
+# Standard mode - faster interval (10 seconds)
 ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 10
 
-# Run in background
+# SSL mode with custom settings
+export MQSSLKEYR=/path/to/keystore
+export MQ_CHANNEL=MY.CHANNEL
+./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30 ssl
+
+# Run in background (standard mode)
 nohup ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30 > /tmp/mq-generator.log 2>&1 &
+
+# Run in background (SSL mode)
+export MQSSLKEYR=/path/to/keystore
+nohup ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30 ssl > /tmp/mq-generator.log 2>&1 &
 
 # Stop background process
 pkill -f mq-message-generator
