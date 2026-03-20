@@ -131,7 +131,6 @@ output "setup_instructions" {
        Step 2 - MQ Channel Authentication (REQUIRED):
          runmqsc QM1 << EOF
          SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
-         REFRESH SECURITY TYPE(SSL)
          EOF
 
        See TCP-PROXY-SETUP.md for complete configuration details.
