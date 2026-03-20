@@ -23,8 +23,7 @@ Backend Resources (IBM MQ, SQL, APIs, etc.)
 ### Azure Infrastructure
 - ✅ Azure Application Gateway Standard v2 with Private Link configuration
 - ✅ **Automated TCP/TLS proxy configuration via PowerShell**
-- ✅ Complete VNet setup with dedicated subnets
-- ✅ Support for existing Azure Resource Groups, VNets, and Subnets
+- ✅ Support for existing Azure Resource Groups, VNets, AppGW backends, load balancing rules and Subnets
 - ✅ Network Security Groups with required rules
 - ✅ Production-ready security settings
 - ✅ Private-only access (no public listener configured)
@@ -37,9 +36,9 @@ Backend Resources (IBM MQ, SQL, APIs, etc.)
 - ✅ Automated IBM MQ Source connector deployment via Terraform
 
 ### Flexibility
-- ✅ Flexible backend pool configuration (IP addresses or FQDNs)
 - ✅ Optional SSL/TLS support for backend connections
-- ✅ Configurable health probes and timeouts
+- ✅ Supports various IBM MQ authentication setups (no password and optional password auth)
+- ✅ Extendable to support other connectors with the same Azure AppGW infra
 
 ## Security
 
@@ -49,14 +48,13 @@ Azure Application Gateway Standard v2 requires a public IP address for managemen
 - The Application Gateway has **no listener configured on the public IP**
 - Without a listener, the gateway **silently drops all incoming packets** to the public IP
 - All traffic flows through the **private frontend IP** via Private Link (Confluent Cloud → Private Endpoint → App Gateway Private IP → Backend)
-- The public IP is used only for Azure platform management traffic (health monitoring, updates)
 - For additional protection, you can apply **Azure DDoS Protection Standard** to the public IP address
 
 This design ensures your backend resources remain completely isolated from public internet access while maintaining Azure's management capabilities.
 
 ## Important Note: TCP/TLS Proxy Configuration
 
-**As of March 18, 2026**, the Terraform azurerm provider (v4.64.0) does not yet support configuring TCP/TLS proxy settings for Application Gateway via code. While Azure Application Gateway Standard v2 fully supports TCP/TLS proxy for non-HTTP protocols like IBM MQ, you need to configure TCP components after deployment.
+**As of March 18, 2026**, the Terraform azurerm provider (v4.64.0) or the Azure CLI does not yet support configuring TCP/TLS proxy settings for Application Gateway via code / automation. This repo will be enhanced at the time this is supported.
 
 **We provide two options:**
 
@@ -146,12 +144,21 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
    - The connector deploys automatically with step 6
    - Check status: `terraform output connector_status`
 
+8. **(Optional) Test Message Generation**:
+   - Use the message generator script to continuously put test messages onto the queue:
+     ```bash
+     # On the IBM MQ server
+     ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30
+     ```
+   - Validates connector is consuming messages and producing to Kafka
+   - Generates JSON messages every 30 seconds (configurable)
+
 ## What's Included
 
 ### Terraform Infrastructure
 - `main.tf` - Core Azure infrastructure (VNet, App Gateway, Private Link)
-- `confluent.tf` - **Confluent Cloud egress endpoint automation** ⭐
-- `tcp-proxy-automation.tf` - **Optional Terraform-integrated TCP proxy automation** ⭐
+- `confluent.tf` - **Confluent Cloud egress endpoint automation** 
+- `tcp-proxy-automation.tf` - **Optional Terraform-integrated TCP proxy automation** 
 - `variables.tf` - Customizable variables (Azure + Confluent + Connector)
 - `outputs.tf` - Connection details and setup instructions
 - `terraform.tfvars.example` - Example configuration with all required variables
@@ -159,9 +166,13 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
 ### Automation Scripts
 - `scripts/configure-tcp-proxy.ps1` - PowerShell TCP proxy automation
 - `scripts/configure-tcp-proxy.sh` - Bash helper script with portal instructions
+- `scripts/setup-mutual-tls.sh` - Automated mutual TLS setup with self-signed CA
+- `scripts/cleanup-mutual-tls.sh` - Clean up SSL certificates and reset configuration
+- `scripts/mq-message-generator.sh` - Generate test messages for connector validation
 
 ### Documentation
 - `TCP-PROXY-SETUP.md` - TCP/TLS proxy setup guide (PowerShell + Portal)
+- `SSL-TLS-SETUP.md` - Mutual TLS setup guide with certificate generation
 - `CONFLUENT-SETUP.md` - Confluent Cloud credential setup guide
 - `EXISTING-RESOURCES.md` - Using existing Resource Groups/VNets/Subnets
 - `SETUP.md` - Detailed step-by-step guide
@@ -235,10 +246,10 @@ For the example configuration to work, your IBM MQ server must be configured wit
     - See TCP-PROXY-SETUP.md for complete configuration
 - **Authentication**: ⚠️ **Important Confluent Connector Requirement**
   - The Confluent connector **requires** a username to be set (even if blank password)
-  - Set MQ connection authentication to `CHCKCLNT(NONE)` to avoid validation issues
+  - Setting MQ connection authentication to `CHCKCLNT(NONE)` it does not validate password for users
   - Command: `ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)`
   - This allows network-level security (Private Link + CHLAUTH) without credential validation
-  - Alternative: Create valid OS users for the connector credentials
+  - Alternative: Create valid users for the connector credentials (recommended production setup)
   - See TCP-PROXY-SETUP.md for complete authentication configuration
 - **SSL/TLS**: Optional - configure cipher suite and keystores if required
 
@@ -280,7 +291,7 @@ The IBM MQ Source connector can be deployed automatically via Terraform:
 
 The connector automatically uses the DNS name (if created) or the private endpoint IP address for the MQ connection.
 
-**Note**: MQ credentials (username/password) are optional. If your IBM MQ server is configured to allow unauthenticated connections, you can leave these empty. This is acceptable when relying on network-level security (Private Link, NSG), though using credentials provides defense-in-depth.
+**Note**: MQ passwords are optional. If your IBM MQ server is configured to allow unauthenticated connections, you can leave the password empty. This might be acceptable when relying on network-level security (Private Link, NSG), though using credentials provides defense-in-depth and is a likely setup in any production environment.
 
 **SSL/TLS Support**: Configure `mq_ssl_*` variables in `terraform.tfvars` for SSL/TLS connections to IBM MQ.
 

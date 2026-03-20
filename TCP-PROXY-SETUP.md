@@ -183,15 +183,15 @@ IBM MQ Backend Server (configured in backend pool)
 
 ## Next Steps After Configuration
 
-### 1. Configure IBM MQ Server Firewall
+### 1. Configure Firewalls to allow IBM MQ (Åsome examples)
 
-**⚠️ CRITICAL STEP**: The IBM MQ server must allow connections from the Application Gateway subnet.
+**⚠️ CRITICAL STEP**: The IBM MQ server must allow connections from the Application Gateway subnet, this also includes firewalls in the path.
 
 **Application Gateway Subnet**: Check your `appgw_subnet_prefix` in `terraform.tfvars`
 - Default: `172.200.9.0/24`
 - Example custom: `10.0.1.0/24`
 
-#### Linux/Unix Firewall (iptables)
+#### Linux/Unix Firewall (iptables) if enabled
 
 ```bash
 # Allow TCP 1414 from Application Gateway subnet
@@ -337,7 +337,7 @@ echo "DISPLAY QMGR CONNAUTH" | runmqsc QM1
   - IBM MQ CHLAUTH rules (IP-based access control)
   - Azure NSG rules
 
-#### Azure Network Security Group (NSG)
+#### Azure Network Security Group (NSG) if MQ server runs in Azure, adjust accordingly for onprem access via corporate firewalls
 
 Verify the backend subnet (where IBM MQ runs) allows traffic from App Gateway:
 
