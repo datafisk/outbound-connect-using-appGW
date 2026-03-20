@@ -183,7 +183,90 @@ IBM MQ Backend Server (configured in backend pool)
 
 ## Next Steps After Configuration
 
-### 1. Add IBM MQ Backend Targets
+### 1. Configure IBM MQ Server Firewall
+
+**⚠️ CRITICAL STEP**: The IBM MQ server must allow connections from the Application Gateway subnet.
+
+**Application Gateway Subnet**: Check your `appgw_subnet_prefix` in `terraform.tfvars`
+- Default: `172.200.9.0/24`
+- Example custom: `10.0.1.0/24`
+
+#### Linux/Unix Firewall (iptables)
+
+```bash
+# Allow TCP 1414 from Application Gateway subnet
+sudo iptables -A INPUT -p tcp --dport 1414 -s 172.200.9.0/24 -j ACCEPT
+sudo iptables -L -n -v | grep 1414
+
+# Make persistent (Ubuntu/Debian)
+sudo netfilter-persistent save
+
+# Make persistent (RHEL/CentOS)
+sudo service iptables save
+```
+
+#### Linux/Unix Firewall (firewalld)
+
+```bash
+# Create rich rule for Application Gateway subnet
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.200.9.0/24" port protocol="tcp" port="1414" accept'
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-all
+```
+
+#### Windows Firewall
+
+```powershell
+# Allow TCP 1414 from Application Gateway subnet
+New-NetFirewallRule -DisplayName "IBM MQ - App Gateway" `
+  -Direction Inbound `
+  -Protocol TCP `
+  -LocalPort 1414 `
+  -RemoteAddress 172.200.9.0/24 `
+  -Action Allow
+
+# Verify the rule
+Get-NetFirewallRule -DisplayName "IBM MQ - App Gateway" | Get-NetFirewallAddressFilter
+```
+
+#### IBM MQ Connection Authentication (CONNAUTHENTICATION)
+
+If using MQ connection authentication, add the Application Gateway subnet:
+
+```bash
+# Allow connections from App Gateway subnet
+runmqsc QM1 << EOF
+SET CHLAUTH('DEV.APP.SVRCONN') TYPE(ADDRESSMAP) ADDRESS('172.200.9.*') USERSRC(CHANNEL) CHCKCLNT(OPTIONAL)
+REFRESH SECURITY TYPE(CONNAUTH)
+EOF
+```
+
+#### Azure Network Security Group (NSG)
+
+Verify the backend subnet (where IBM MQ runs) allows traffic from App Gateway:
+
+```bash
+# Check NSG rules for IBM MQ backend subnet
+az network nsg rule list \
+  --resource-group <mq-rg> \
+  --nsg-name <mq-nsg> \
+  --query "[?destinationPortRange=='1414']" \
+  -o table
+
+# If needed, add rule to allow from App Gateway subnet
+az network nsg rule create \
+  --resource-group <mq-rg> \
+  --nsg-name <mq-nsg> \
+  --name AllowAppGatewayToMQ \
+  --priority 100 \
+  --source-address-prefixes 172.200.9.0/24 \
+  --destination-port-ranges 1414 \
+  --protocol Tcp \
+  --access Allow \
+  --direction Inbound
+```
+
+### 2. Add IBM MQ Backend Targets
 
 Edit `terraform.tfvars`:
 ```hcl
@@ -195,20 +278,57 @@ Run:
 terraform apply
 ```
 
-### 2. Create Private Link Connection in Confluent Cloud
-
-Use the Application Gateway Resource ID:
-```
-/subscriptions/8018576d-fc49-402a-bb75-7437bff60635/resourceGroups/confluent-pl-rg/providers/Microsoft.Network/applicationGateways/confluent-pl-appgw
-```
-
 ### 3. Approve Private Endpoint Connection
 
-In Azure Portal:
+The private endpoint connection should already be approved if you followed the Quick Start guide.
+
+Check status:
+```bash
+az network private-endpoint-connection list \
+  --name confluent-pl-appgw \
+  --resource-group vpc-peered-cce-se \
+  --type Microsoft.Network/applicationGateways \
+  -o table
+```
+
+If pending, approve it:
+```bash
+az network private-endpoint-connection approve \
+  --name <connection-name> \
+  --resource-group vpc-peered-cce-se \
+  --resource-name confluent-pl-appgw \
+  --type Microsoft.Network/applicationGateways \
+  --description "Approved for Confluent Cloud egress"
+```
+
+Or via Azure Portal:
 - Go to Application Gateway → Private Link Center
 - Approve the pending connection from Confluent Cloud
 
-### 4. Configure IBM MQ Connector
+### 4. Verify End-to-End Connectivity
+
+Test the connection from Application Gateway to IBM MQ:
+
+```bash
+# From a VM in the same VNet as App Gateway, test MQ connectivity
+nc -zv 10.33.0.4 1414
+
+# Or use telnet
+telnet 10.33.0.4 1414
+```
+
+Check Application Gateway backend health:
+```bash
+az network application-gateway show-backend-health \
+  --name confluent-pl-appgw \
+  --resource-group vpc-peered-cce-se \
+  --query "backendAddressPools[0].backendHttpSettingsCollection[0].servers[0].health" \
+  -o tsv
+```
+
+Expected output: `Healthy` (once firewall rules are configured)
+
+### 5. Configure IBM MQ Connector
 
 ```bash
 # Update connector configuration
@@ -232,17 +352,99 @@ cp ibm-mq-source.env.example ibm-mq-source.env
 
 ### Backend Health Shows Unhealthy
 
-1. Verify TCP health probe is configured correctly
-2. Check that IBM MQ is listening on port 1414
-3. Verify NSG rules allow traffic from App Gateway subnet to backend
-4. Check IBM MQ firewall allows connections from 10.0.1.0/24
+**Most Common Cause**: IBM MQ firewall not allowing connections from Application Gateway subnet.
+
+1. **Verify IBM MQ firewall allows App Gateway subnet** (see Step 1 above)
+   ```bash
+   # On IBM MQ server, check if port 1414 is listening
+   netstat -an | grep 1414
+   # Or
+   ss -tulpn | grep 1414
+   ```
+
+2. **Check Application Gateway can reach IBM MQ**
+   ```bash
+   # From a VM in the App Gateway subnet (172.200.9.0/24)
+   nc -zv <mq-ip> 1414
+   telnet <mq-ip> 1414
+   ```
+
+3. **Verify TCP health probe is configured correctly**
+   - Protocol: `Tcp`
+   - Port: `1414`
+   - Verify via: Azure Portal → App Gateway → Health probes
+
+4. **Check Azure NSG rules**
+   ```bash
+   # Verify NSG allows traffic from App Gateway subnet to MQ backend
+   az network nsg rule list --resource-group <rg> --nsg-name <nsg> -o table
+   ```
+
+5. **Check IBM MQ listener status**
+   ```bash
+   # On IBM MQ server
+   echo "DISPLAY LISTENER(*)" | runmqsc QM1
+   ```
+
+6. **Review IBM MQ channel authentication**
+   ```bash
+   # Check channel authentication records
+   echo "DISPLAY CHLAUTH(*)" | runmqsc QM1
+   ```
 
 ### Connection Times Out
 
-1. Verify Private Endpoint connection is approved
-2. Check that Private Link is in "Succeeded" state
-3. Verify backend targets are reachable from App Gateway subnet
-4. Test connectivity: `Test-NetConnection -ComputerName <mq-ip> -Port 1414`
+1. **Verify IBM MQ firewall** (see above)
+2. **Verify Private Endpoint connection is approved**
+   ```bash
+   az network private-endpoint-connection show \
+     --name <connection-name> \
+     --resource-group vpc-peered-cce-se \
+     --resource-name confluent-pl-appgw \
+     --type Microsoft.Network/applicationGateways \
+     --query "privateLinkServiceConnectionState.status" -o tsv
+   ```
+   Expected: `Approved`
+
+3. **Check Private Link state**
+   ```bash
+   az network application-gateway show \
+     --name confluent-pl-appgw \
+     --resource-group vpc-peered-cce-se \
+     --query "provisioningState" -o tsv
+   ```
+   Expected: `Succeeded`
+
+4. **Verify backend targets are reachable from App Gateway subnet**
+   ```powershell
+   # From a Windows VM in the VNet
+   Test-NetConnection -ComputerName <mq-ip> -Port 1414
+   ```
+
+### Connector Shows "Could not connect to IbmMQ hosts"
+
+1. **Verify TCP proxy is configured** (not HTTP)
+   - Check listener protocol is `Tcp` (not `Http`)
+   - Check backend settings protocol is `Tcp` (not `Http`)
+
+2. **Verify firewall rules** (see Step 1 in Next Steps)
+
+3. **Check DNS resolution** (if using DNS record)
+   ```bash
+   # From Confluent Cloud connector logs
+   nslookup ibmmq2.peter.com
+   ```
+
+4. **Verify MQ channel is running**
+   ```bash
+   echo "DISPLAY CHANNEL(DEV.APP.SVRCONN)" | runmqsc QM1
+   ```
+
+5. **Check MQ connection authentication**
+   ```bash
+   # Review connection auth settings
+   echo "DISPLAY AUTHINFO(*)" | runmqsc QM1
+   ```
 
 ---
 
