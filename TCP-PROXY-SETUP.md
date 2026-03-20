@@ -293,9 +293,9 @@ The Confluent IBM MQ connector **mandates** a username to be set in the configur
 If you're relying on network-level security (Private Link, NSG, CHLAUTH) and don't need MQ password validation, set connection authentication checking to `NONE`:
 
 ```bash
-# Disable connection authentication checking
+# Disable connection authentication checking for both client and local connections
 runmqsc QM1 << EOF
-ALTER AUTHINFO(SYSTEM.DEFAULT.AUTHINFO.IDPWOS) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)
+ALTER AUTHINFO(SYSTEM.DEFAULT.AUTHINFO.IDPWOS) AUTHTYPE(IDPWOS) CHCKCLNT(NONE) CHCKLOCL(NONE)
 REFRESH SECURITY TYPE(CONNAUTH)
 EOF
 ```
@@ -304,8 +304,10 @@ EOF
 
 ```bash
 # Developer edition typically uses DEV.AUTHINFO
+# CHCKCLNT(NONE) - disables authentication for client connections (remote)
+# CHCKLOCL(NONE) - disables authentication for local connections (same server)
 runmqsc QM1 << EOF
-ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE)
+ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKCLNT(NONE) CHCKLOCL(NONE)
 REFRESH SECURITY TYPE(CONNAUTH)
 EOF
 ```
@@ -321,10 +323,20 @@ echo "DISPLAY QMGR CONNAUTH" | runmqsc QM1
 ```
 
 **Options Explained:**
+
+Connection Authentication Options (CHCKCLNT):
 - `CHCKCLNT(NONE)` - Don't validate client credentials (network security only)
 - `CHCKCLNT(OPTIONAL)` - Validate if credentials provided ⚠️ **Don't use with Confluent connector**
 - `CHCKCLNT(REQUIRED)` - Always validate credentials (need valid OS users)
 - `CHCKCLNT(REQDADM)` - Validate for privileged users only
+
+Local Authentication Options (CHCKLOCL):
+- `CHCKLOCL(NONE)` - Don't validate local user credentials
+- `CHCKLOCL(OPTIONAL)` - Validate local users if password provided (can cause AMQ5534E errors)
+- `CHCKLOCL(REQUIRED)` - Always validate local users (need valid OS passwords)
+- `CHCKLOCL(REQDADM)` - Validate for privileged local users only
+
+**Note**: Set both `CHCKCLNT(NONE)` and `CHCKLOCL(NONE)` for simplest setup when using network-level security.
 
 **Why CHCKCLNT(NONE) works for this setup:**
 - Confluent connector always sends a username (cannot be disabled)
