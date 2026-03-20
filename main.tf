@@ -236,4 +236,16 @@ resource "azurerm_application_gateway" "main" {
   depends_on = [
     azurerm_subnet_network_security_group_association.appgw
   ]
+
+  # Ignore changes to components that are manually configured for TCP proxy
+  # The Terraform provider doesn't support TCP listeners/backend settings yet
+  # These are configured via PowerShell script (scripts/configure-tcp-proxy.ps1)
+  lifecycle {
+    ignore_changes = [
+      http_listener,
+      backend_http_settings,
+      probe,
+      request_routing_rule
+    ]
+  }
 }
