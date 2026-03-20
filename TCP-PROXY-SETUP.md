@@ -11,14 +11,14 @@
 - Backend pool configured
 - Health probe configured
 
-## ⚠️ Configuration Required
+## Configuration Required
 
 The Terraform azurerm provider (v4.64.0) doesn't yet fully support TCP/TLS proxy configuration via code.
 **Choose one of the following options to complete the TCP/TLS proxy setup:**
 
 ---
 
-## Option 1: Automated Configuration (PowerShell) ⭐ RECOMMENDED
+## Option 1: Automated Configuration (PowerShell)
 
 Use the provided PowerShell script to automatically configure TCP proxy:
 
@@ -229,7 +229,7 @@ New-NetFirewallRule -DisplayName "IBM MQ - App Gateway" `
 Get-NetFirewallRule -DisplayName "IBM MQ - App Gateway" | Get-NetFirewallAddressFilter
 ```
 
-#### IBM MQ Channel Authentication (CHLAUTH) ⚠️ REQUIRED
+#### IBM MQ Channel Authentication (CHLAUTH)
 
 IBM MQ requires channel authentication rules to allow connections from the Application Gateway subnet.
 
@@ -283,12 +283,12 @@ net user confluent ConfluentP@ss123 /add
 # Then add to mqm group via Computer Management
 ```
 
-#### IBM MQ Connection Authentication (CONNAUTH) ⚠️ IMPORTANT
+#### IBM MQ Connection Authentication (CONNAUTH)
 
 **Confluent Cloud Connector Requirement:**
 The Confluent IBM MQ connector **mandates** a username to be set in the configuration, even if your MQ server doesn't require authentication. This can cause issues if MQ authentication checking is set to `OPTIONAL`.
 
-**Recommended Configuration:**
+**Configuration for Network-Level Security:**
 
 If you're relying on network-level security (Private Link, NSG, CHLAUTH) and don't need MQ password validation, set connection authentication checking to `NONE`:
 
@@ -326,7 +326,7 @@ echo "DISPLAY QMGR CONNAUTH" | runmqsc QM1
 - `CHCKCLNT(REQUIRED)` - Always validate credentials (need valid OS users)
 - `CHCKCLNT(REQDADM)` - Validate for privileged users only
 
-**Why CHCKCLNT(NONE) is recommended for this setup:**
+**Why CHCKCLNT(NONE) works for this setup:**
 - Confluent connector always sends a username (cannot be disabled)
 - With `CHCKCLNT(OPTIONAL)`, MQ will attempt to validate the username/password
 - If validation fails, connection is rejected even though security is handled by Private Link
