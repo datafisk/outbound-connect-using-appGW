@@ -210,10 +210,16 @@ For the example configuration to work, your IBM MQ server must be configured wit
 - **Queue**: Named `DEV.QUEUE.1` (or update `JMS_DESTINATION_NAME` in config)
 - **Transport Mode**: Client mode enabled
 - **Network Access**: ⚠️ **CRITICAL** - Must allow connections from Application Gateway subnet
-  - **Add Application Gateway subnet to MQ firewall allow list**
-  - Default subnet: `172.200.9.0/24` (or your custom `appgw_subnet_prefix`)
-  - Application Gateway connects to MQ from IPs in this range
-  - Example firewall rule: Allow TCP 1414 from 172.200.9.0/24
+  - **Step 1: Add Application Gateway subnet to OS firewall allow list**
+    - Default subnet: `172.200.9.0/24` (or your custom `appgw_subnet_prefix`)
+    - Example firewall rule: Allow TCP 1414 from 172.200.9.0/24
+  - **Step 2: Configure IBM MQ Channel Authentication (CHLAUTH)**
+    - Required: Add channel auth rule for Application Gateway subnet
+    - Example for CONFLUENT.CHL channel:
+      ```bash
+      SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
+      ```
+    - See TCP-PROXY-SETUP.md for complete configuration
 - **Authentication**: Optional - can be configured for unauthenticated or authenticated access
   - If using authentication, configure username/password in the connector
   - If using unauthenticated, ensure the channel's MCAUSER is set appropriately
