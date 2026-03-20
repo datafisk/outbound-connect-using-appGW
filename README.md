@@ -147,8 +147,8 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
 8. **(Optional) Test Message Generation**:
    - Use the message generator script to continuously put test messages onto the queue:
      ```bash
-     # Standard authentication (default)
-     ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30
+     # Standard authentication (run as mqm user)
+     sudo -u mqm ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30
 
      # With mutual TLS
      export MQSSLKEYR=/path/to/ssl-certs/connector-keystore
@@ -157,6 +157,7 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
    - Validates connector is consuming messages and producing to Kafka
    - Generates JSON messages every 30 seconds (configurable)
    - Supports both standard and SSL/TLS authentication modes
+   - Run as mqm user to avoid local authentication issues
 
 ## What's Included
 

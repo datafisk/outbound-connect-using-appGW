@@ -121,8 +121,30 @@ To validate your connector configuration, use the message generator script to co
 ### Standard Authentication (Default)
 
 ```bash
-# On the IBM MQ server - uses local bindings
-./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30
+# On the IBM MQ server - run as mqm user to avoid authentication issues
+sudo -u mqm ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30
+```
+
+**If you get AMQ5534E authentication errors:**
+
+Your queue manager has local authentication enabled (`CHCKLOCL(OPTIONAL)`). You have three options:
+
+**Option 1: Run as mqm user (recommended for testing)**
+```bash
+sudo -u mqm ./scripts/mq-message-generator.sh DEV.QUEUE.1 QM1 30
+```
+
+**Option 2: Disable local authentication**
+```bash
+sudo -u mqm runmqsc QM1 << EOF
+ALTER AUTHINFO(DEV.AUTHINFO) AUTHTYPE(IDPWOS) CHCKLOCL(NONE)
+REFRESH SECURITY TYPE(CONNAUTH)
+EOF
+```
+
+**Option 3: Set a password for your current user**
+```bash
+sudo passwd $(whoami)
 ```
 
 ### With Mutual TLS

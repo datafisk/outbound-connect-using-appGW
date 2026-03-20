@@ -36,6 +36,16 @@ MQ_CHANNEL="${MQ_CHANNEL:-CONFLUENT.CHL}"
 MQ_HOST="${MQ_HOST:-localhost}"
 MQ_PORT="${MQ_PORT:-1414}"
 
+# Warn about potential authentication issues if not running as mqm
+if [ "${SSL_MODE}" = "standard" ] && [ "$(id -un)" != "mqm" ]; then
+  echo "Note: Running as user '$(id -un)'"
+  echo "If you encounter AMQ5534E authentication errors, use one of these options:"
+  echo "  1. Run as mqm user:        sudo -u mqm $0 $@"
+  echo "  2. Disable local auth:     ALTER AUTHINFO(DEV.AUTHINFO) CHCKLOCL(NONE)"
+  echo "  3. Set password for user:  sudo passwd $(id -un)"
+  echo ""
+fi
+
 echo "=========================================="
 echo "IBM MQ Message Generator"
 echo "=========================================="
