@@ -100,8 +100,15 @@ azure_subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 # IBM MQ Source Connector Configuration (Optional)
 # ===================================================================
 # Set create_connector = true to automatically deploy the connector
+# Set create_connector = false to deploy only infrastructure (for multi-connector setups)
+#
+# Multi-connector use case:
+#   - Deploy infrastructure once with create_connector = false
+#   - Add multiple backend pools/routing rules to App Gateway
+#   - Deploy each connector separately (see MULTI-CONNECTOR.md)
 
-# create_connector = true
+create_connector = false  # Set to true to deploy IBM MQ connector
+
 # connector_name   = "ibm-mq-source-connector"
 
 # Kafka Cluster Configuration

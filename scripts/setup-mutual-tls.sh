@@ -7,6 +7,12 @@
 # 3. Confluent connector client certificate signed by CA
 # 4. Java keystores for the connector
 #
+# Usage:
+#   ./setup-mutual-tls.sh [dns_domain]
+#
+# Example:
+#   ./setup-mutual-tls.sh ibmmq2.peter.com
+#
 # Prerequisites:
 # - IBM MQ installed on Ubuntu
 # - Java keytool available
@@ -29,9 +35,12 @@ WORK_DIR="./ssl-certs"
 CA_VALIDITY_DAYS=3650  # 10 years
 CERT_VALIDITY_DAYS=365 # 1 year
 
+# DNS domain for MQ server certificate (passed as argument or default)
+DNS_DOMAIN="${1:-mq-server.local}"
+
 # Certificate details
 CA_DN="CN=Test CA,OU=Testing,O=ConfluentDemo,C=US"
-MQ_SERVER_DN="CN=mq-server.local,OU=MQ,O=ConfluentDemo,C=US"
+MQ_SERVER_DN="CN=${DNS_DOMAIN},OU=MQ,O=ConfluentDemo,C=US"
 CLIENT_DN="CN=confluent-connector,OU=Connectors,O=ConfluentDemo,C=US"
 
 # Passwords (for testing - use secure passwords in production)
@@ -42,9 +51,17 @@ TRUSTSTORE_PASSWORD="connector-truststore-123"
 
 echo "Configuration:"
 echo "  Queue Manager: ${QM_NAME}"
+echo "  DNS Domain:    ${DNS_DOMAIN}"
 echo "  SSL Directory: ${SSL_DIR}"
 echo "  Work Directory: ${WORK_DIR}"
 echo ""
+
+if [ "$DNS_DOMAIN" = "mq-server.local" ]; then
+  echo "⚠️  WARNING: Using default DNS domain 'mq-server.local'"
+  echo "   For Confluent connector, this should match your dns_domain in terraform.tfvars"
+  echo "   Usage: $0 ibmmq2.peter.com"
+  echo ""
+fi
 
 # Ensure SSL directory exists
 if [ ! -d "${SSL_DIR}" ]; then
