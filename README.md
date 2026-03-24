@@ -20,6 +20,12 @@ Backend Resources (IBM MQ, SQL, APIs, etc.)
 
 ## Features
 
+### Multi-Connector Support
+- ✅ Single App Gateway supports multiple connectors (IBM MQ, Oracle, SQL Server, etc.)
+- ✅ Shared infrastructure reduces costs
+- ✅ Independent backend pools and routing rules per connector
+- ✅ See [MULTI-CONNECTOR.md](MULTI-CONNECTOR.md) for multi-connector setup guide
+
 ### Azure Infrastructure
 - ✅ Azure Application Gateway Standard v2 with Private Link configuration
 - ✅ **Automated TCP/TLS proxy configuration via PowerShell**
@@ -179,6 +185,7 @@ This limitation is only in the Terraform provider - the Azure platform itself fu
 ### Documentation
 - `TCP-PROXY-SETUP.md` - TCP/TLS proxy setup guide (PowerShell + Portal)
 - `SSL-TLS-SETUP.md` - Mutual TLS setup guide with certificate generation
+- `MULTI-CONNECTOR.md` - Multi-connector deployment guide (share infrastructure)
 - `CONFLUENT-SETUP.md` - Confluent Cloud credential setup guide
 - `EXISTING-RESOURCES.md` - Using existing Resource Groups/VNets/Subnets
 - `SETUP.md` - Detailed step-by-step guide
@@ -304,8 +311,8 @@ The connector automatically uses the DNS name (if created) or the private endpoi
 For mutual TLS authentication between the connector and IBM MQ, use the automated setup script:
 
 ```bash
-# On the IBM MQ server
-./scripts/setup-mutual-tls.sh
+# On the IBM MQ server (use your dns_domain from terraform.tfvars)
+./scripts/setup-mutual-tls.sh ibmmq2.peter.com
 ```
 
 This creates:

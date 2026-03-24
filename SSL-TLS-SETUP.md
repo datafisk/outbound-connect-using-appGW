@@ -27,9 +27,14 @@ The automated script creates all necessary certificates and configures MQ.
 # Make the script executable
 chmod +x scripts/setup-mutual-tls.sh
 
-# Run the script (requires sudo for MQ configuration)
+# Run the script with your DNS domain (IMPORTANT: must match dns_domain in terraform.tfvars)
+./scripts/setup-mutual-tls.sh ibmmq2.peter.com
+
+# Or run without parameter to use default (mq-server.local) - not recommended for Confluent
 ./scripts/setup-mutual-tls.sh
 ```
+
+**IMPORTANT**: The DNS domain must match what the Confluent connector uses to connect. This is typically the `dns_domain` variable in your `terraform.tfvars`.
 
 **What the script does:**
 - Creates self-signed CA certificate
