@@ -30,7 +30,6 @@ Backend Resources (IBM MQ, SQL, APIs, etc.)
 - ✅ Azure Application Gateway Standard v2 with Private Link configuration
 - ✅ **Automated TCP/TLS proxy configuration via PowerShell**
 - ✅ Support for existing Azure Resource Groups, VNets, AppGW backends, load balancing rules and Subnets
-- ✅ Network Security Groups with required rules
 - ✅ Production-ready security settings
 - ✅ Private-only access (no public listener configured)
 

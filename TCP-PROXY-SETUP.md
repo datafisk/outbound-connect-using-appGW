@@ -5,7 +5,6 @@
 ✅ **Infrastructure Deployed Successfully:**
 - Azure Application Gateway Standard v2
 - Virtual Network with subnets
-- Network Security Groups
 - Private Link Configuration enabled
 - Listener on port 1414
 - Backend pool configured
