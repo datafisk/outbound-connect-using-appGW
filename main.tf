@@ -65,58 +65,8 @@ locals {
   appgw_subnet_id = var.create_subnets ? azurerm_subnet.appgw[0].id : data.azurerm_subnet.existing_appgw[0].id
 }
 
-# Network Security Group for Application Gateway subnet
-resource "azurerm_network_security_group" "appgw" {
-  name                = "${var.resource_prefix}-appgw-nsg"
-  location            = local.resource_group_location
-  resource_group_name = local.resource_group_name
-  tags                = var.tags
-
-  # Allow inbound traffic from GatewayManager
-  security_rule {
-    name                       = "AllowGatewayManager"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "65200-65535"
-    source_address_prefix      = "GatewayManager"
-    destination_address_prefix = "*"
-  }
-
-  # Allow Azure Load Balancer
-  security_rule {
-    name                       = "AllowAzureLoadBalancer"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "AzureLoadBalancer"
-    destination_address_prefix = "*"
-  }
-
-  # Allow inbound traffic on listener port for Private Link
-  security_rule {
-    name                       = "AllowPrivateLinkListener"
-    priority                   = 120
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = var.ibm_mq_frontend_port
-    source_address_prefix      = "VirtualNetwork"
-    destination_address_prefix = "*"
-  }
-}
-
-# Associate NSG with Application Gateway subnet
-resource "azurerm_subnet_network_security_group_association" "appgw" {
-  subnet_id                 = local.appgw_subnet_id
-  network_security_group_id = azurerm_network_security_group.appgw.id
-}
+# Network Security Group removed - not required for Application Gateway
+# Application Gateway manages its own security requirements
 
 # Public IP for Application Gateway
 resource "azurerm_public_ip" "appgw" {
@@ -232,10 +182,6 @@ resource "azurerm_application_gateway" "main" {
       primary                       = true
     }
   }
-
-  depends_on = [
-    azurerm_subnet_network_security_group_association.appgw
-  ]
 
   # Ignore changes to components that are manually configured for TCP proxy
   # The Terraform provider doesn't support TCP listeners/backend settings yet
