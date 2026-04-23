@@ -14,8 +14,8 @@ resource "azurerm_resource_group" "main" {
 
 # Local values to reference the correct resource group
 locals {
-  resource_group_name = var.create_resource_group ? azurerm_resource_group.main[0].name : data.azurerm_resource_group.existing[0].name
-  resource_group_location = var.create_resource_group ? azurerm_resource_group.main[0].location : data.azurerm_resource_group.existing[0].location
+  resource_group_name      = var.create_resource_group ? azurerm_resource_group.main[0].name : data.azurerm_resource_group.existing[0].name
+  resource_group_location  = var.create_resource_group ? azurerm_resource_group.main[0].location : data.azurerm_resource_group.existing[0].location
   vnet_resource_group_name = var.existing_vnet_resource_group_name != "" ? var.existing_vnet_resource_group_name : local.resource_group_name
 }
 
@@ -78,7 +78,8 @@ resource "azurerm_public_ip" "appgw" {
   tags                = var.tags
 }
 
-# Application Gateway with TCP support for IBM MQ
+# Application Gateway with native TCP/TLS proxy support for IBM MQ
+# Uses Terraform-native listener, backend_settings, and routing_rule blocks
 resource "azurerm_application_gateway" "main" {
   name                = "${var.resource_prefix}-appgw"
   location            = local.resource_group_location
@@ -120,55 +121,45 @@ resource "azurerm_application_gateway" "main" {
 
   # Backend address pool for IBM MQ servers
   backend_address_pool {
-    name  = "ibm-mq-backend-pool"
-    fqdns = [for target in var.ibm_mq_backend_targets : target if can(regex("^[a-zA-Z]", target))]
+    name         = "ibm-mq-backend-pool"
+    fqdns        = [for target in var.ibm_mq_backend_targets : target if can(regex("^[a-zA-Z]", target))]
     ip_addresses = [for target in var.ibm_mq_backend_targets : target if can(regex("^[0-9]", target))]
   }
 
-  # Backend settings for IBM MQ
-  backend_http_settings {
-    name                                = "ibm-mq-backend-settings"
-    cookie_based_affinity               = "Disabled"
-    port                                = var.ibm_mq_backend_port
-    protocol                            = "Http"
-    request_timeout                     = 60
-    probe_name                          = "ibm-mq-health-probe"
-    pick_host_name_from_backend_address = false
-  }
-
-  # Health probe for IBM MQ
-  # Note: Using Http as Terraform provider doesn't support Tcp yet
-  # Will be updated to TCP via Azure CLI post-deployment
+  # TCP Health probe for IBM MQ
   probe {
-    name                                      = "ibm-mq-health-probe"
-    protocol                                  = "Http"
-    path                                      = "/"
-    interval                                  = 30
-    timeout                                   = 30
-    unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = false
-    host                                      = "127.0.0.1"
-    port                                      = var.ibm_mq_backend_port
+    name                = "ibm-mq-health-probe"
+    protocol            = "Tcp"
+    port                = var.ibm_mq_backend_port
+    interval            = 30
+    timeout             = 30
+    unhealthy_threshold = 3
   }
 
-  # Listener on private frontend for Confluent Cloud Private Link
-  # Note: Terraform provider doesn't support 'Tls' protocol yet for TCP/TLS proxy
-  # Using Http for now - for full TCP/TLS proxy, configure via Azure Portal/CLI after deployment
-  http_listener {
-    name                           = "ibm-mq-private-listener"
+  # TCP Backend settings for IBM MQ
+  backend {
+    name               = "ibm-mq-backend-settings"
+    port               = var.ibm_mq_backend_port
+    protocol           = "Tcp"
+    timeout_in_seconds = 20
+    probe_name         = "ibm-mq-health-probe"
+  }
+
+  # TCP Listener on private frontend for Confluent Cloud Private Link
+  listener {
+    name                           = "ibm-mq-listener"
+    protocol                       = "Tcp"
     frontend_ip_configuration_name = "appgw-frontend-private"
     frontend_port_name             = "ibm-mq-port"
-    protocol                       = "Http"
   }
 
-  # Routing rule from private listener to IBM MQ backend
-  request_routing_rule {
-    name                       = "ibm-mq-private-routing-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "ibm-mq-private-listener"
-    backend_address_pool_name  = "ibm-mq-backend-pool"
-    backend_http_settings_name = "ibm-mq-backend-settings"
-    priority                   = 100
+  # TCP Routing rule from listener to IBM MQ backend
+  routing_rule {
+    name                      = "ibm-mq-routing-rule"
+    priority                  = 100
+    listener_name             = "ibm-mq-listener"
+    backend_address_pool_name = "ibm-mq-backend-pool"
+    backend_name              = "ibm-mq-backend-settings"
   }
 
   # Private Link configuration for Confluent Cloud
@@ -181,17 +172,5 @@ resource "azurerm_application_gateway" "main" {
       private_ip_address_allocation = "Dynamic"
       primary                       = true
     }
-  }
-
-  # Ignore changes to components that are manually configured for TCP proxy
-  # The Terraform provider doesn't support TCP listeners/backend settings yet
-  # These are configured via PowerShell script (scripts/configure-tcp-proxy.ps1)
-  lifecycle {
-    ignore_changes = [
-      http_listener,
-      backend_http_settings,
-      probe,
-      request_routing_rule
-    ]
   }
 }
