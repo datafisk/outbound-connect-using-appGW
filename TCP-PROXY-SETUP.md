@@ -1,23 +1,38 @@
 # Azure Application Gateway TCP/TLS Proxy Configuration
 
-## Current Status
+## 🎉 Native Terraform Support Available (April 2026)
 
-✅ **Infrastructure Deployed Successfully:**
-- Azure Application Gateway Standard v2
-- Virtual Network with subnets
-- Private Link Configuration enabled
-- Listener on port 1414
-- Backend pool configured
-- Health probe configured
+**✅ TCP/TLS proxy is now fully supported in Terraform!**
 
-## Configuration Required
+As of April 2026, the Terraform azurerm provider includes native support for TCP/TLS proxy configuration via the `listener`, `backend_settings`, and `routing_rule` blocks. **No manual configuration is required** for new deployments.
 
-The Terraform azurerm provider (v4.64.0) doesn't yet fully support TCP/TLS proxy configuration via code.
-**Choose one of the following options to complete the TCP/TLS proxy setup:**
+If you're deploying this infrastructure for the first time, simply run:
+```bash
+terraform apply
+```
+
+The Application Gateway will be automatically configured with TCP proxy capabilities.
 
 ---
 
-## Option 1: Automated Configuration (PowerShell)
+## Legacy Configuration Options
+
+**Note**: The following manual configuration options are only needed if you have an existing Application Gateway that was deployed before TCP support was added to Terraform, or if you need to configure TCP proxy outside of Terraform.
+
+---
+
+## Option 1: Migrate Existing Deployment to Terraform (Recommended)
+
+If you have an existing Application Gateway that was manually configured for TCP:
+
+1. Update your Terraform code to use the new TCP blocks (see main.tf)
+2. Remove any lifecycle ignore_changes blocks
+3. Run `terraform plan` to review changes
+4. Run `terraform apply` to bring infrastructure under full Terraform management
+
+---
+
+## Option 2: Automated Configuration (PowerShell - Legacy)
 
 Use the provided PowerShell script to automatically configure TCP proxy:
 
