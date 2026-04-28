@@ -440,6 +440,12 @@ variable "oracle_snapshot_mode" {
   default     = "initial"
 }
 
+variable "oracle_snapshot_fetch_size" {
+  description = "Number of rows to fetch per database query during snapshot"
+  type        = string
+  default     = "10000"
+}
+
 variable "oracle_kafka_topic" {
   description = "Kafka topic for Oracle CDC data (optional, overrides topic_prefix)"
   type        = string
