@@ -109,6 +109,70 @@ variable "ibm_mq_frontend_port" {
   default     = 1414
 }
 
+# Oracle Backend Configuration
+variable "oracle_backend_targets" {
+  description = "List of Oracle backend targets (IP addresses or FQDNs)"
+  type        = list(string)
+  default     = []
+}
+
+variable "oracle_backend_port" {
+  description = "Port for Oracle server"
+  type        = number
+  default     = 1521
+}
+
+variable "oracle_frontend_port" {
+  description = "Frontend port for Oracle listener"
+  type        = number
+  default     = 1521
+}
+
+# Oracle Database Provisioning (Optional)
+variable "provision_oracle_database" {
+  description = "Whether to provision Oracle Database VM"
+  type        = bool
+  default     = false
+}
+
+variable "oracle_vm_size" {
+  description = "Azure VM size for Oracle Database"
+  type        = string
+  default     = "Standard_D4s_v3"
+}
+
+variable "oracle_ssh_public_key" {
+  description = "SSH public key for Oracle VM"
+  type        = string
+  default     = ""
+}
+
+variable "oracle_ssh_private_key_path" {
+  description = "Path to SSH private key for Oracle VM provisioning"
+  type        = string
+  default     = "~/.ssh/id_rsa"
+}
+
+variable "oracle_sys_password" {
+  description = "Oracle SYS password"
+  type        = string
+  sensitive   = true
+  default     = "Confluent123!"
+}
+
+variable "oracle_pdb_name" {
+  description = "Oracle PDB name"
+  type        = string
+  default     = "XEPDB1"
+}
+
+# Oracle DNS Configuration
+variable "oracle_dns_domain" {
+  description = "Custom DNS domain name for Oracle egress access point"
+  type        = string
+  default     = ""
+}
+
 # Confluent Cloud Configuration
 variable "confluent_cloud_api_key" {
   description = "Confluent Cloud API Key"
@@ -298,5 +362,86 @@ variable "mq_ssl_truststore_password" {
   description = "Truststore password (optional)"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+# Oracle XStream Connector Configuration
+variable "create_oracle_connector" {
+  description = "Whether to create the Oracle XStream CDC connector"
+  type        = bool
+  default     = false
+}
+
+variable "oracle_connector_name" {
+  description = "Name for the Oracle XStream connector"
+  type        = string
+  default     = "oracle-xstream-cdc-connector"
+}
+
+variable "oracle_db_user" {
+  description = "Oracle XStream user (typically C##GGADMIN)"
+  type        = string
+  sensitive   = true
+  default     = "C##GGADMIN"
+}
+
+variable "oracle_db_password" {
+  description = "Oracle XStream user password"
+  type        = string
+  sensitive   = true
+  default     = "Confluent12!"
+}
+
+variable "oracle_db_hostname" {
+  description = "Oracle database hostname (uses DNS record if created, otherwise Private Link IP)"
+  type        = string
+  default     = ""
+}
+
+variable "oracle_db_port" {
+  description = "Oracle database port"
+  type        = number
+  default     = 1521
+}
+
+variable "oracle_db_name" {
+  description = "Oracle database CDB name"
+  type        = string
+  default     = "XE"
+}
+
+variable "oracle_service_name" {
+  description = "Oracle database service name"
+  type        = string
+  default     = "XE"
+}
+
+variable "oracle_out_server_name" {
+  description = "XStream outbound server name"
+  type        = string
+  default     = "XOUT"
+}
+
+variable "oracle_table_include_list" {
+  description = "Tables to capture from Oracle (regex pattern)"
+  type        = string
+  default     = "ORDERMGMT[.](ORDER_ITEMS|ORDERS|EMPLOYEES|PRODUCTS|CUSTOMERS|INVENTORIES|PRODUCT_CATEGORIES)"
+}
+
+variable "oracle_topic_prefix" {
+  description = "Kafka topic prefix for Oracle data"
+  type        = string
+  default     = "oracle"
+}
+
+variable "oracle_snapshot_mode" {
+  description = "Snapshot mode for initial load (initial, initial_only, schema_only, never)"
+  type        = string
+  default     = "initial"
+}
+
+variable "oracle_kafka_topic" {
+  description = "Kafka topic for Oracle CDC data (optional, overrides topic_prefix)"
+  type        = string
   default     = ""
 }
