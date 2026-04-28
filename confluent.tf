@@ -197,9 +197,10 @@ resource "confluent_connector" "oracle_xstream" {
     "tasks.max"       = tostring(var.connector_tasks_max)
 
     # Oracle Connection Settings
-    # Use Oracle VM private IP if provisioned, otherwise use configured hostname
-    "oracle.server"   = var.provision_oracle_database ? module.oracle_database[0].oracle_private_ip : var.oracle_db_hostname
-    "oracle.port"     = tostring(var.oracle_backend_port)
+    # Connect through Application Gateway Private Link (same access point as IBM MQ)
+    # Use DNS name if created, otherwise use access point IP
+    "oracle.server" = var.create_dns_record && var.oracle_dns_domain != "" ? var.oracle_dns_domain : confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_ip_address
+    "oracle.port"   = tostring(var.oracle_frontend_port)
     "oracle.username" = var.oracle_db_user
 
     # Database Configuration

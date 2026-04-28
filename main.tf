@@ -165,7 +165,7 @@ resource "azurerm_application_gateway" "main" {
   # ===== Oracle XStream Configuration (Optional) =====
   # Frontend port for Oracle (1521) - only created if Oracle targets are configured
   dynamic "frontend_port" {
-    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    for_each = length(local.oracle_backend_targets) > 0 ? [1] : []
     content {
       name = "oracle-port"
       port = var.oracle_frontend_port
@@ -174,17 +174,17 @@ resource "azurerm_application_gateway" "main" {
 
   # Backend address pool for Oracle servers
   dynamic "backend_address_pool" {
-    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    for_each = length(local.oracle_backend_targets) > 0 ? [1] : []
     content {
       name         = "oracle-backend-pool"
-      fqdns        = [for target in var.oracle_backend_targets : target if can(regex("^[a-zA-Z]", target))]
-      ip_addresses = [for target in var.oracle_backend_targets : target if can(regex("^[0-9]", target))]
+      fqdns        = [for target in local.oracle_backend_targets : target if can(regex("^[a-zA-Z]", target))]
+      ip_addresses = [for target in local.oracle_backend_targets : target if can(regex("^[0-9]", target))]
     }
   }
 
   # TCP Health probe for Oracle
   dynamic "probe" {
-    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    for_each = length(local.oracle_backend_targets) > 0 ? [1] : []
     content {
       name                = "oracle-health-probe"
       protocol            = "Tcp"
@@ -197,7 +197,7 @@ resource "azurerm_application_gateway" "main" {
 
   # TCP Backend settings for Oracle
   dynamic "backend" {
-    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    for_each = length(local.oracle_backend_targets) > 0 ? [1] : []
     content {
       name               = "oracle-backend-settings"
       port               = var.oracle_backend_port
@@ -209,7 +209,7 @@ resource "azurerm_application_gateway" "main" {
 
   # TCP Listener for Oracle
   dynamic "listener" {
-    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    for_each = length(local.oracle_backend_targets) > 0 ? [1] : []
     content {
       name                           = "oracle-listener"
       protocol                       = "Tcp"
@@ -220,7 +220,7 @@ resource "azurerm_application_gateway" "main" {
 
   # TCP Routing rule from listener to Oracle backend
   dynamic "routing_rule" {
-    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    for_each = length(local.oracle_backend_targets) > 0 ? [1] : []
     content {
       name                      = "oracle-routing-rule"
       priority                  = 200 # Different priority from IBM MQ (100)
@@ -272,4 +272,12 @@ module "oracle_database" {
     azurerm_virtual_network.main,
     azurerm_subnet.appgw
   ]
+}
+
+# Combine manual Oracle backends with provisioned Oracle VM
+locals {
+  oracle_backend_targets = concat(
+    var.oracle_backend_targets,
+    var.provision_oracle_database ? [module.oracle_database[0].oracle_private_ip] : []
+  )
 }
