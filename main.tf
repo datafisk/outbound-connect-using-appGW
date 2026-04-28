@@ -251,10 +251,18 @@ module "oracle_database" {
   count  = var.provision_oracle_database ? 1 : 0
   source = "./modules/oracle-database/terraform"
 
-  resource_prefix     = var.resource_prefix
-  resource_group_name = local.resource_group_name
-  vnet_name           = local.vnet_name
-  appgw_subnet_prefix = var.appgw_subnet_prefix
+  resource_prefix          = var.resource_prefix
+  resource_group_name      = local.resource_group_name
+  vnet_name                = local.vnet_name
+  vnet_resource_group_name = local.vnet_resource_group_name
+  appgw_subnet_prefix      = var.appgw_subnet_prefix
+
+  # Subnet Configuration
+  create_subnet      = var.oracle_create_subnet
+  existing_subnet_id = var.oracle_existing_subnet_id
+
+  # NSG Configuration
+  create_nsg = var.oracle_create_nsg
 
   # SSH Configuration
   ssh_public_key       = var.oracle_ssh_public_key

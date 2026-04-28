@@ -137,3 +137,66 @@ create_connector = false  # Set to true to deploy IBM MQ connector
 # mq_ssl_keystore_password     = "keystore-password"
 # mq_ssl_truststore_location   = "/path/to/truststore.jks"
 # mq_ssl_truststore_password   = "truststore-password"
+
+# ===================================================================
+# Oracle Database Provisioning (Optional)
+# ===================================================================
+# Automatically provision Oracle XE 21c on Azure VM for PoC/testing
+# Set provision_oracle_database = true to create Oracle VM with XStream CDC
+
+# provision_oracle_database = false
+
+# SSH Configuration (required if provisioning Oracle)
+# oracle_ssh_public_key       = "ssh-rsa AAAA..."  # Or use file() function in .tfvars
+# oracle_ssh_private_key_path = "~/.ssh/id_rsa"
+
+# Oracle Database Configuration
+# oracle_sys_password = "YourSecurePassword!"  # Oracle SYS/SYSTEM password
+# oracle_pdb_name     = "XEPDB1"               # Pluggable database name
+# oracle_vm_size      = "Standard_D4s_v3"      # VM size (4 vCPUs, 16 GB RAM)
+
+# Subnet Configuration (for Oracle VM)
+# Option 1: Create new subnet (default)
+# oracle_create_subnet = true
+
+# Option 2: Use existing subnet (no NSG management)
+# oracle_create_subnet      = false
+# oracle_existing_subnet_id = "/subscriptions/.../subnets/oracle-subnet"
+# oracle_create_nsg         = false  # Skip NSG when using existing subnet
+
+# ===================================================================
+# Oracle XStream CDC Connector (Optional)
+# ===================================================================
+# Deploy Oracle XStream CDC connector to Confluent Cloud
+# Requires: kafka_cluster_id, kafka_api_key, kafka_api_secret
+
+# create_oracle_connector = false
+
+# oracle_connector_name = "oracle-xstream-cdc-connector"
+
+# Oracle Connection (automatically uses Access Point IP or DNS)
+# oracle_db_user     = "C##GGADMIN"           # XStream admin user
+# oracle_db_password = "YourXStreamPassword!" # XStream user password
+
+# Table Capture Configuration
+# oracle_table_include_list = "ORDERMGMT[.](ORDERS|CUSTOMERS|PRODUCTS)"
+# oracle_topic_prefix       = "oracle"
+# oracle_snapshot_mode      = "initial"  # initial, schema_only, or never
+
+# Advanced Configuration (optional)
+# oracle_db_name              = "XE"      # CDB name
+# oracle_pdb_name             = "XEPDB1"  # PDB name
+# oracle_out_server_name      = "XOUT"   # XStream outbound server name
+# oracle_snapshot_fetch_size  = "10000"  # Rows per snapshot query
+
+# ===================================================================
+# Oracle Backend Configuration (Using Existing Oracle)
+# ===================================================================
+# If you have an existing Oracle database (not provisioned by Terraform),
+# add it to the Application Gateway backend pool:
+
+# oracle_backend_targets = ["10.0.5.10"]  # Oracle DB private IP
+# oracle_backend_port    = 1521
+# oracle_frontend_port   = 1521
+
+# Note: Provisioned Oracle VM is automatically added to backend pool

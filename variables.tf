@@ -141,6 +141,24 @@ variable "oracle_vm_size" {
   default     = "Standard_D4s_v3"
 }
 
+variable "oracle_create_subnet" {
+  description = "Whether to create a new subnet for Oracle VM"
+  type        = bool
+  default     = true
+}
+
+variable "oracle_existing_subnet_id" {
+  description = "ID of existing subnet for Oracle VM (if oracle_create_subnet is false)"
+  type        = string
+  default     = ""
+}
+
+variable "oracle_create_nsg" {
+  description = "Whether to create and manage NSG for Oracle VM (set to false when using existing subnet with existing NSG)"
+  type        = bool
+  default     = true
+}
+
 variable "oracle_ssh_public_key" {
   description = "SSH public key for Oracle VM"
   type        = string
