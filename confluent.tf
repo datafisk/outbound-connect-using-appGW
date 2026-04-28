@@ -171,3 +171,62 @@ resource "confluent_connector" "ibm_mq_source" {
     confluent_access_point.appgw_egress
   ]
 }
+
+# Oracle XStream CDC Connector
+resource "confluent_connector" "oracle_xstream" {
+  count = var.create_oracle_connector ? 1 : 0
+
+  environment {
+    id = data.confluent_environment.main.id
+  }
+
+  kafka_cluster {
+    id = var.kafka_cluster_id
+  }
+
+  config_sensitive = {
+    "kafka.api.key"    = var.kafka_api_key
+    "kafka.api.secret" = var.kafka_api_secret
+    "oracle.password"  = var.oracle_db_password
+  }
+
+  config_nonsensitive = {
+    "connector.class" = "OracleXstreamCdc"
+    "name"            = var.oracle_connector_name
+    "kafka.auth.mode" = "KAFKA_API_KEY"
+    "tasks.max"       = tostring(var.connector_tasks_max)
+
+    # Oracle Connection Settings
+    # Use Oracle VM private IP if provisioned, otherwise use configured hostname
+    "oracle.server"   = var.provision_oracle_database ? module.oracle_database[0].oracle_private_ip : var.oracle_db_hostname
+    "oracle.port"     = tostring(var.oracle_backend_port)
+    "oracle.username" = var.oracle_db_user
+
+    # Database Configuration
+    "oracle.database"         = var.oracle_db_name
+    "oracle.pdb.name"         = var.oracle_pdb_name
+    "oracle.out.server.name"  = var.oracle_out_server_name
+
+    # Table Selection
+    "table.include.list" = var.oracle_table_include_list
+
+    # Topic Configuration
+    "topic.prefix"    = var.oracle_topic_prefix
+    "snapshot.mode"   = var.oracle_snapshot_mode
+
+    # Output Format
+    "key.converter"                  = "org.apache.kafka.connect.json.JsonConverter"
+    "value.converter"                = "org.apache.kafka.connect.json.JsonConverter"
+    "key.converter.schemas.enable"   = "false"
+    "value.converter.schemas.enable" = "false"
+    "output.data.format"             = "JSON"
+
+    # Performance tuning
+    "snapshot.fetch.size" = var.oracle_snapshot_fetch_size
+  }
+
+  depends_on = [
+    confluent_access_point.appgw_egress,
+    module.oracle_database
+  ]
+}
