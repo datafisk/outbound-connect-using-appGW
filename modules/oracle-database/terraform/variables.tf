@@ -13,6 +13,12 @@ variable "vnet_name" {
   type        = string
 }
 
+variable "vnet_resource_group_name" {
+  description = "Resource group name where VNet is located (defaults to resource_group_name)"
+  type        = string
+  default     = ""
+}
+
 variable "create_subnet" {
   description = "Whether to create a new subnet for Oracle"
   type        = bool
@@ -34,6 +40,13 @@ variable "oracle_subnet_prefix" {
 variable "appgw_subnet_prefix" {
   description = "Application Gateway subnet CIDR (for NSG rules)"
   type        = string
+  default     = ""
+}
+
+variable "create_nsg" {
+  description = "Whether to create and manage NSG (set to false when using existing subnet with existing NSG)"
+  type        = bool
+  default     = true
 }
 
 variable "allowed_ssh_cidr" {

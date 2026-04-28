@@ -18,7 +18,7 @@ data "azurerm_resource_group" "oracle" {
 # Data source for existing VNet
 data "azurerm_virtual_network" "oracle" {
   name                = var.vnet_name
-  resource_group_name = var.resource_group_name
+  resource_group_name = var.vnet_resource_group_name != "" ? var.vnet_resource_group_name : var.resource_group_name
 }
 
 # Subnet for Oracle VM
@@ -31,7 +31,9 @@ resource "azurerm_subnet" "oracle" {
 }
 
 # Network Security Group for Oracle
+# Only created if create_nsg is true (skip when using existing subnet with existing NSG)
 resource "azurerm_network_security_group" "oracle" {
+  count               = var.create_nsg ? 1 : 0
   name                = "${var.resource_prefix}-oracle-nsg"
   location            = data.azurerm_resource_group.oracle.location
   resource_group_name = var.resource_group_name
@@ -49,17 +51,20 @@ resource "azurerm_network_security_group" "oracle" {
     destination_address_prefix = "*"
   }
 
-  # Oracle Database access from App Gateway subnet
-  security_rule {
-    name                       = "Oracle"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "1521"
-    source_address_prefix      = var.appgw_subnet_prefix
-    destination_address_prefix = "*"
+  # Oracle Database access from App Gateway subnet (if appgw_subnet_prefix provided)
+  dynamic "security_rule" {
+    for_each = var.appgw_subnet_prefix != "" ? [1] : []
+    content {
+      name                       = "Oracle"
+      priority                   = 110
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "1521"
+      source_address_prefix      = var.appgw_subnet_prefix
+      destination_address_prefix = "*"
+    }
   }
 
   tags = var.tags
@@ -93,10 +98,11 @@ resource "azurerm_network_interface" "oracle" {
   tags = var.tags
 }
 
-# Associate NSG with NIC
+# Associate NSG with NIC (only if NSG was created)
 resource "azurerm_network_interface_security_group_association" "oracle" {
+  count                     = var.create_nsg ? 1 : 0
   network_interface_id      = azurerm_network_interface.oracle.id
-  network_security_group_id = azurerm_network_security_group.oracle.id
+  network_security_group_id = azurerm_network_security_group.oracle[0].id
 }
 
 # Azure VM for Oracle Database
