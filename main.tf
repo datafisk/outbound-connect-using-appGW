@@ -162,6 +162,74 @@ resource "azurerm_application_gateway" "main" {
     backend_name              = "ibm-mq-backend-settings"
   }
 
+  # ===== Oracle XStream Configuration (Optional) =====
+  # Frontend port for Oracle (1521) - only created if Oracle targets are configured
+  dynamic "frontend_port" {
+    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    content {
+      name = "oracle-port"
+      port = var.oracle_frontend_port
+    }
+  }
+
+  # Backend address pool for Oracle servers
+  dynamic "backend_address_pool" {
+    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    content {
+      name         = "oracle-backend-pool"
+      fqdns        = [for target in var.oracle_backend_targets : target if can(regex("^[a-zA-Z]", target))]
+      ip_addresses = [for target in var.oracle_backend_targets : target if can(regex("^[0-9]", target))]
+    }
+  }
+
+  # TCP Health probe for Oracle
+  dynamic "probe" {
+    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    content {
+      name                = "oracle-health-probe"
+      protocol            = "Tcp"
+      port                = var.oracle_backend_port
+      interval            = 30
+      timeout             = 30
+      unhealthy_threshold = 3
+    }
+  }
+
+  # TCP Backend settings for Oracle
+  dynamic "backend" {
+    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    content {
+      name               = "oracle-backend-settings"
+      port               = var.oracle_backend_port
+      protocol           = "Tcp"
+      timeout_in_seconds = 20
+      probe_name         = "oracle-health-probe"
+    }
+  }
+
+  # TCP Listener for Oracle
+  dynamic "listener" {
+    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    content {
+      name                           = "oracle-listener"
+      protocol                       = "Tcp"
+      frontend_ip_configuration_name = "appgw-frontend-private"
+      frontend_port_name             = "oracle-port"
+    }
+  }
+
+  # TCP Routing rule from listener to Oracle backend
+  dynamic "routing_rule" {
+    for_each = length(var.oracle_backend_targets) > 0 ? [1] : []
+    content {
+      name                      = "oracle-routing-rule"
+      priority                  = 200 # Different priority from IBM MQ (100)
+      listener_name             = "oracle-listener"
+      backend_address_pool_name = "oracle-backend-pool"
+      backend_name              = "oracle-backend-settings"
+    }
+  }
+
   # Private Link configuration for Confluent Cloud
   private_link_configuration {
     name = "private-link-config"
@@ -173,4 +241,35 @@ resource "azurerm_application_gateway" "main" {
       primary                       = true
     }
   }
+}
+
+# ===== Oracle Database Provisioning (Optional) =====
+# Provisions Oracle XE 21c in Docker on Azure VM
+# Only created if provision_oracle_database = true
+
+module "oracle_database" {
+  count  = var.provision_oracle_database ? 1 : 0
+  source = "./modules/oracle-database/terraform"
+
+  resource_prefix     = var.resource_prefix
+  resource_group_name = local.resource_group_name
+  vnet_name           = local.vnet_name
+  appgw_subnet_prefix = var.appgw_subnet_prefix
+
+  # SSH Configuration
+  ssh_public_key       = var.oracle_ssh_public_key
+  ssh_private_key_path = var.oracle_ssh_private_key_path
+
+  # Oracle Configuration
+  oracle_sys_password = var.oracle_sys_password
+  oracle_pdb_name     = var.oracle_pdb_name
+  vm_size             = var.oracle_vm_size
+  configure_xstream   = true
+
+  tags = var.tags
+
+  depends_on = [
+    azurerm_virtual_network.main,
+    azurerm_subnet.appgw
+  ]
 }

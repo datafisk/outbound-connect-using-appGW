@@ -14,9 +14,16 @@ Confluent Cloud Managed Connector
 Azure Private Link Service
     ↓
 Application Gateway (Standard v2)
-    ↓
-Backend Resources (IBM MQ, SQL, APIs, etc.)
+    ├─ Port 1414 → IBM MQ Backend
+    ├─ Port 1521 → Oracle Database Backend (Optional)
+    └─ Custom ports → Additional backends
 ```
+
+### Supported Connectors
+
+- ✅ **IBM MQ Source** - Capture messages from IBM MQ queues
+- ✅ **Oracle XStream CDC** - Change Data Capture from Oracle Database (19c, 21c XE, 23ai)
+- ✅ **Extensible** - Add SQL Server, MongoDB, REST APIs, etc.
 
 ## Features
 
@@ -38,11 +45,14 @@ Backend Resources (IBM MQ, SQL, APIs, etc.)
 - ✅ Support for existing Confluent Cloud Networks and Attachments
 - ✅ Private Link Service for Confluent Cloud integration
 - ✅ Automated DNS record creation for access points
-- ✅ Automated IBM MQ Source connector deployment via Terraform
+- ✅ Automated connector deployment via Terraform:
+  - IBM MQ Source connector
+  - Oracle XStream CDC connector
 
 ### Flexibility
 - ✅ Optional SSL/TLS support for backend connections
-- ✅ Supports various IBM MQ authentication setups (no password and optional password auth)
+- ✅ Optional Oracle Database provisioning (Docker-based)
+- ✅ Supports various authentication setups (IBM MQ, Oracle XStream)
 - ✅ Extendable to support other connectors with the same Azure AppGW infra
 
 ## Security
@@ -178,9 +188,25 @@ See [CONFLUENT-SETUP.md](CONFLUENT-SETUP.md) for details on when to use existing
 
 See [SETUP.md](SETUP.md) for detailed deployment and configuration instructions.
 
-## Example Connector
+## Example Connectors
 
-Included example: **IBM MQ Source Connector** that consumes messages from IBM MQ over Private Link (via Application Gateway) and produces to Kafka topics.
+This repository includes complete examples for two connectors:
+
+### 1. IBM MQ Source Connector
+Consumes messages from IBM MQ queues over Private Link (via Application Gateway) and produces to Kafka topics.
+
+**Documentation:** [IBM MQ Connector](connectors/ibm-mq/)
+
+### 2. Oracle XStream CDC Connector
+Captures change data (INSERT, UPDATE, DELETE) from Oracle Database in real-time using XStream API.
+
+**Features:**
+- ✅ **Optional Oracle provisioning** - Automated Oracle XE 21c deployment on Azure VM
+- ✅ **Pre-configured XStream** - Database setup scripts included
+- ✅ **Sample data** - ORDERMGMT schema with test data
+- ✅ **Full CDC support** - Initial snapshot + ongoing changes
+
+**Documentation:** [ORACLE-XSTREAM-SETUP.md](ORACLE-XSTREAM-SETUP.md)
 
 ### IBM MQ Requirements
 

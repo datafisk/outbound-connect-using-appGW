@@ -1,0 +1,79 @@
+#cloud-config
+# Cloud-init configuration to install Docker and Oracle Database XE 21c
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - docker.io
+  - docker-compose
+
+write_files:
+  - path: /opt/oracle/docker-compose.yml
+    content: |
+      version: '2.4'
+      services:
+        database:
+          container_name: oracle21c
+          image: container-registry.oracle.com/database/express:21.3.0-xe
+          environment:
+            - ORACLE_SID=XE
+            - ORACLE_PDB=${oracle_pdb}
+            - ORACLE_PWD=${oracle_password}
+            - ORACLE_MEM=${oracle_memory_mb}
+            - ENABLE_ARCHIVELOG=${enable_archivelog}
+            - ORACLE_CHARACTERSET=${oracle_characterset}
+          volumes:
+            - oracle-data:/opt/oracle/oradata
+          ports:
+            - "1521:1521"
+            - "5500:5500"
+          restart: unless-stopped
+
+      volumes:
+        oracle-data:
+    permissions: '0644'
+
+  - path: /opt/oracle/start-oracle.sh
+    content: |
+      #!/bin/bash
+      set -e
+
+      echo "Starting Oracle Database XE 21c..."
+      cd /opt/oracle
+
+      # Pull Oracle image (if not cached)
+      echo "Pulling Oracle Database image..."
+      docker pull container-registry.oracle.com/database/express:21.3.0-xe
+
+      # Start Oracle with docker-compose
+      docker-compose up -d
+
+      echo "Waiting for Oracle to be ready..."
+      timeout 600 bash -c 'until docker logs oracle21c 2>&1 | grep -q "DATABASE IS READY TO USE"; do echo "Still waiting..."; sleep 10; done'
+
+      echo "Oracle Database is ready!"
+      echo "Connection details:"
+      echo "  SID: XE"
+      echo "  PDB: ${oracle_pdb}"
+      echo "  Port: 1521"
+      echo "  SYS password: [configured]"
+
+      # Show container status
+      docker ps
+    permissions: '0755'
+
+runcmd:
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker ubuntu
+  - mkdir -p /opt/oracle
+  - chmod +x /opt/oracle/start-oracle.sh
+  - /opt/oracle/start-oracle.sh > /var/log/oracle-startup.log 2>&1
+
+final_message: "Oracle Database XE 21c installation complete. Check /var/log/oracle-startup.log for details."
