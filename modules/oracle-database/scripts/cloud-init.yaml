@@ -51,7 +51,8 @@ write_files:
       echo "Pulling Oracle Database image..."
       docker pull container-registry.oracle.com/database/express:21.3.0-xe
 
-      # Start Oracle with docker-compose
+      # Start Oracle with docker-compose (with increased timeout for large image)
+      export COMPOSE_HTTP_TIMEOUT=300
       docker-compose up -d
 
       echo "Waiting for Oracle to be ready..."

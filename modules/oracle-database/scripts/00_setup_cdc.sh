@@ -39,7 +39,7 @@ run_sql() {
 
 # Copy scripts into container
 echo "[1/7] Copying setup scripts to container..."
-$DOCKER cp "$SCRIPT_DIR" $CONTAINER_NAME:/opt/oracle/scripts/setup/
+$DOCKER cp "$SCRIPT_DIR/." $CONTAINER_NAME:/opt/oracle/scripts/setup/
 
 # Step 1: Configure database for CDC
 echo "[2/7] Configuring database (redo logs, archivelog, supplemental logging)..."
