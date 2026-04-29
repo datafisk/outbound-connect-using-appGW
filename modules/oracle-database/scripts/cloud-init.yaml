@@ -71,9 +71,11 @@ write_files:
 runcmd:
   - systemctl enable docker
   - systemctl start docker
-  - usermod -aG docker ubuntu
+  - usermod -aG docker ${admin_username}
   - mkdir -p /opt/oracle
+  - chown -R ${admin_username}:${admin_username} /opt/oracle
   - chmod +x /opt/oracle/start-oracle.sh
+  # Run Oracle startup as root (has docker access immediately)
   - /opt/oracle/start-oracle.sh > /var/log/oracle-startup.log 2>&1
 
 final_message: "Oracle Database XE 21c installation complete. Check /var/log/oracle-startup.log for details."
