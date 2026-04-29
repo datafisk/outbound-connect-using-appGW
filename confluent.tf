@@ -185,13 +185,13 @@ resource "confluent_connector" "oracle_xstream" {
   }
 
   config_sensitive = {
-    "kafka.api.key"    = var.kafka_api_key
-    "kafka.api.secret" = var.kafka_api_secret
-    "oracle.password"  = var.oracle_db_password
+    "kafka.api.key"      = var.kafka_api_key
+    "kafka.api.secret"   = var.kafka_api_secret
+    "database.password"  = var.oracle_db_password
   }
 
   config_nonsensitive = {
-    "connector.class" = "OracleXstreamCdc"
+    "connector.class" = "OracleXStreamSource"
     "name"            = var.oracle_connector_name
     "kafka.auth.mode" = "KAFKA_API_KEY"
     "tasks.max"       = tostring(var.connector_tasks_max)
@@ -199,17 +199,19 @@ resource "confluent_connector" "oracle_xstream" {
     # Oracle Connection Settings
     # Connect through Application Gateway Private Link (same access point as IBM MQ)
     # Use DNS name if created, otherwise use access point IP
-    "oracle.server" = var.create_dns_record && var.oracle_dns_domain != "" ? var.oracle_dns_domain : confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_ip_address
-    "oracle.port"   = tostring(var.oracle_frontend_port)
-    "oracle.username" = var.oracle_db_user
+    "database.hostname" = var.create_dns_record && var.oracle_dns_domain != "" ? var.oracle_dns_domain : confluent_access_point.appgw_egress.azure_egress_private_link_endpoint[0].private_endpoint_ip_address
+    "database.port"     = tostring(var.oracle_frontend_port)
+    "database.user"     = var.oracle_db_user
 
     # Database Configuration
-    "oracle.database"         = var.oracle_db_name
-    "oracle.pdb.name"         = var.oracle_pdb_name
-    "oracle.out.server.name"  = var.oracle_out_server_name
+    "database.dbname"            = var.oracle_db_name  # CDB name (XE)
+    "database.service.name"      = var.oracle_db_name  # Use CDB service name for XStream connection
+    "database.pdb.name"          = var.oracle_pdb_name  # PDB where source tables are
+    "database.out.server.name"   = var.oracle_out_server_name
+    "database.processor.licenses" = "1"  # Number of Oracle processor licenses
 
     # Table Selection
-    "table.include.list" = var.oracle_table_include_list
+    "table.inclusion.regex" = var.oracle_table_include_list
 
     # Topic Configuration
     "topic.prefix"    = var.oracle_topic_prefix
@@ -220,7 +222,7 @@ resource "confluent_connector" "oracle_xstream" {
     "value.converter"                = "org.apache.kafka.connect.json.JsonConverter"
     "key.converter.schemas.enable"   = "false"
     "value.converter.schemas.enable" = "false"
-    "output.data.format"             = "JSON"
+    "output.data.format"             = "AVRO"
 
     # Performance tuning
     "snapshot.fetch.size" = var.oracle_snapshot_fetch_size

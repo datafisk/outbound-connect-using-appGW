@@ -272,7 +272,7 @@ module "oracle_database" {
   oracle_sys_password = var.oracle_sys_password
   oracle_pdb_name     = var.oracle_pdb_name
   vm_size             = var.oracle_vm_size
-  configure_xstream   = true
+  configure_xstream   = false  # Manually configured
 
   tags = var.tags
 
