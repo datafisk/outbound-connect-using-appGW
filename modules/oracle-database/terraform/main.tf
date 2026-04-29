@@ -135,6 +135,7 @@ resource "azurerm_linux_virtual_machine" "oracle" {
 
   # Cloud-init configuration to install Docker and Oracle
   custom_data = base64encode(templatefile("${path.module}/../scripts/cloud-init.yaml", {
+    admin_username       = var.admin_username
     oracle_password      = var.oracle_sys_password
     oracle_pdb           = var.oracle_pdb_name
     oracle_characterset  = var.oracle_characterset

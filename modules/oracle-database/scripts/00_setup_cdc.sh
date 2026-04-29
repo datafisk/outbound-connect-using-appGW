@@ -15,6 +15,9 @@ CDB_NAME="XE"
 ORDERMGMT_PASSWORD="kafka"
 CONTAINER_NAME="oracle21c"
 
+# Use sudo for docker commands (group membership may not be active yet)
+DOCKER="sudo docker"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "=== Oracle XStream CDC Setup ==="
@@ -31,12 +34,12 @@ run_sql() {
     local sql_file=$4
 
     echo "Running: $sql_file as $user@$service"
-    docker exec $CONTAINER_NAME bash -c "sqlplus -S $user/$pass@$service as sysdba @/opt/oracle/scripts/setup/$(basename $sql_file)"
+    $DOCKER exec $CONTAINER_NAME bash -c "sqlplus -S $user/$pass@$service as sysdba @/opt/oracle/scripts/setup/$(basename $sql_file)"
 }
 
 # Copy scripts into container
 echo "[1/7] Copying setup scripts to container..."
-docker cp "$SCRIPT_DIR" $CONTAINER_NAME:/opt/oracle/scripts/setup/
+$DOCKER cp "$SCRIPT_DIR" $CONTAINER_NAME:/opt/oracle/scripts/setup/
 
 # Step 1: Configure database for CDC
 echo "[2/7] Configuring database (redo logs, archivelog, supplemental logging)..."
