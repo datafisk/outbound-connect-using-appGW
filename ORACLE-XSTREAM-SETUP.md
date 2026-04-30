@@ -69,7 +69,7 @@ terraform apply
 If you already have Oracle Database running, configure it for XStream and point the connector to it.
 
 **Prerequisites:**
-- Oracle Database 19c, 21c, or 23ai
+- Oracle Database 19c or 21c (Standalone only - RAC not supported)
 - Network access from Application Gateway subnet
 - XStream configured (see below)
 

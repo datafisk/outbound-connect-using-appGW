@@ -7,7 +7,8 @@ This directory contains configuration for the Confluent Oracle XStream CDC Sourc
 The Oracle XStream connector:
 - ✅ Captures **INSERT**, **UPDATE**, **DELETE** operations in real-time
 - ✅ Supports initial snapshot of existing data
-- ✅ Works with Oracle 19c, 21c XE, 23ai, and Enterprise Edition
+- ✅ Works with Oracle 19c, 21c XE, and Enterprise Edition
+- ✅ **Standalone databases only** (Oracle RAC is not supported)
 - ✅ Uses Oracle XStream API (requires Oracle GoldenGate license for EE)
 - ✅ Connects via **Private Link** through Application Gateway
 
