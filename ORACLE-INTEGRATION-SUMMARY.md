@@ -57,7 +57,7 @@ Azure Application Gateway (Single Instance)
 - Captures INSERT, UPDATE, DELETE in real-time
 - Initial snapshot of existing data
 - Schema evolution support
-- Works with Oracle 19c, 21c XE, 23ai
+- Works with Oracle 19c, 21c XE (Standalone databases only, RAC not supported)
 
 ### 3. Application Gateway Updates
 **Location:** `main.tf`

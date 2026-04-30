@@ -22,7 +22,7 @@ Application Gateway (Standard v2)
 ### Supported Connectors
 
 - ✅ **IBM MQ Source** - Capture messages from IBM MQ queues
-- ✅ **Oracle XStream CDC** - Change Data Capture from Oracle Database (19c, 21c XE, 23ai)
+- ✅ **Oracle XStream CDC** - Change Data Capture from Oracle Database (19c, 21c XE) - **Standalone only, not RAC**
 - ✅ **Extensible** - Add SQL Server, MongoDB, REST APIs, etc.
 
 ## Features
