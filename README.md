@@ -31,6 +31,7 @@ Application Gateway (Standard v2)
 - ✅ Single App Gateway supports multiple connectors (IBM MQ, Oracle, SQL Server, etc.)
 - ✅ Shared infrastructure reduces costs
 - ✅ Independent backend pools and routing rules per connector
+- ✅ Supports up to 200 listeners (Azure limit) - sufficient for 200 different port mappings
 - ✅ See [MULTI-CONNECTOR.md](MULTI-CONNECTOR.md) for multi-connector setup guide
 
 ### Azure Infrastructure
@@ -138,6 +139,7 @@ This infrastructure is now **100% managed by Terraform** with no manual configur
 - `scripts/mq-message-generator.sh` - Generate test messages for connector validation
 
 ### Documentation
+- `IBM-MQ-HEARTBEAT.md` - **Critical**: Heartbeat and idle timeout configuration for long-lived connections
 - `TCP-PROXY-SETUP.md` - TCP/TLS proxy setup guide (PowerShell + Portal)
 - `SSL-TLS-SETUP.md` - Mutual TLS setup guide with certificate generation
 - `MULTI-CONNECTOR.md` - Multi-connector deployment guide (share infrastructure)
@@ -207,6 +209,18 @@ Captures change data (INSERT, UPDATE, DELETE) from Oracle Database in real-time 
 - ✅ **Full CDC support** - Initial snapshot + ongoing changes
 
 **Documentation:** [ORACLE-XSTREAM-SETUP.md](ORACLE-XSTREAM-SETUP.md)
+
+### Critical: Heartbeat and Idle Timeout Configuration
+
+**⚠️ IMPORTANT**: For long-lived IBM MQ connections, you **must** align the Application Gateway idle timeout with IBM MQ heartbeat intervals to prevent connection drops during periods when no messages are on the queue.
+
+**Quick Configuration**:
+- Application Gateway Idle Timeout: **15 minutes** (configurable via `appgw_idle_timeout_minutes` in `terraform.tfvars`)
+- IBM MQ Heartbeat Interval (HBINT): **5 minutes** (300 seconds) - must be **less than** AppGW timeout
+
+**Why This Matters**: When no messages are on the queue, the connection becomes idle. Without proper heartbeat configuration, the Application Gateway will close the connection after its idle timeout, causing connector failures.
+
+**See [IBM-MQ-HEARTBEAT.md](IBM-MQ-HEARTBEAT.md)** for complete configuration guide, troubleshooting, and best practices.
 
 ### IBM MQ Requirements
 

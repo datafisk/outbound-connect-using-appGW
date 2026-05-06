@@ -109,6 +109,16 @@ variable "ibm_mq_frontend_port" {
   default     = 1414
 }
 
+variable "appgw_idle_timeout_minutes" {
+  description = "Application Gateway idle timeout in minutes (1-20). Recommended: 10-15 minutes for long-lived connections like IBM MQ. IMPORTANT: Set IBM MQ heartbeat interval to be LESS than this value to prevent connection drops during idle periods."
+  type        = number
+  default     = 15
+  validation {
+    condition     = var.appgw_idle_timeout_minutes >= 1 && var.appgw_idle_timeout_minutes <= 20
+    error_message = "Application Gateway idle timeout must be between 1 and 20 minutes."
+  }
+}
+
 # Oracle Backend Configuration
 variable "oracle_backend_targets" {
   description = "List of Oracle backend targets (IP addresses or FQDNs)"

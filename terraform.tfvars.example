@@ -48,6 +48,20 @@ appgw_sku = {
   capacity = 2
 }
 
+# ===================================================================
+# Application Gateway Idle Timeout Configuration (Critical for MQ)
+# ===================================================================
+# IMPORTANT: For long-lived IBM MQ connections, align this timeout with
+# IBM MQ heartbeat intervals to prevent connection drops when queues are idle.
+#
+# Recommended configuration:
+#   - AppGW Idle Timeout: 15 minutes (default)
+#   - IBM MQ HBINT: 300 seconds (5 minutes) - must be LESS than AppGW timeout
+#
+# See IBM-MQ-HEARTBEAT.md for complete configuration guide
+#
+# appgw_idle_timeout_minutes = 15  # Default: 15 minutes (range: 1-20)
+
 tags = {
   Environment = "dev"
   Purpose     = "confluent-privatelink"

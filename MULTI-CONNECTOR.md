@@ -256,6 +256,29 @@ terraform apply -target=confluent_connector.oracle
 - 3 connectors × $100/month = $300/month
 - With shared: $100/month total
 
+## Azure Application Gateway Limitations
+
+### Maximum Listeners: 200
+
+Azure Application Gateway supports a **maximum of 200 listeners** per instance. This is an important consideration when planning port mapping strategies for multiple connectors.
+
+**Impact on port mapping scenarios:**
+- If you plan to expose many different backend services, each on a unique port
+- Maximum 200 different port/protocol combinations
+- Includes listeners for all protocols (HTTP, HTTPS, TCP, TLS)
+
+**Example:**
+- 50 connectors × 1 port each = 50 listeners ✅
+- 200 connectors × 1 port each = 200 listeners ✅ (at limit)
+- 201+ connectors = Requires multiple Application Gateway instances ❌
+
+**Workaround for >200 connectors:**
+1. Deploy multiple Application Gateway instances
+2. Use multiple frontend IP addresses with separate Private Link endpoints
+3. Group connectors logically across gateways (e.g., by environment or connector type)
+
+**Reference:** [Azure Application Gateway limits](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#application-gateway-limits)
+
 ## Best Practices
 
 ### 1. Use Separate Backend Pools
@@ -269,7 +292,12 @@ terraform apply -target=confluent_connector.oracle
 - SQL: 1433
 - Avoids port conflicts
 
-### 3. Organize Terraform Modules
+### 3. Plan for Scale
+- Track listener count if planning many connectors
+- Maximum 200 listeners per Application Gateway
+- Consider multiple gateways for large deployments (>100 connectors)
+
+### 4. Organize Terraform Modules
 ```
 modules/
   ├── shared-infrastructure/
@@ -281,7 +309,7 @@ modules/
       └── sql/
 ```
 
-### 4. Tag Resources Appropriately
+### 5. Tag Resources Appropriately
 ```hcl
 tags = {
   Environment = "production"
@@ -291,7 +319,7 @@ tags = {
 }
 ```
 
-### 5. Use Separate DNS Records
+### 6. Use Separate DNS Records
 - `ibmmq.yourdomain.com` → MQ connector
 - `oracle.yourdomain.com` → Oracle connector
 - `sqlserver.yourdomain.com` → SQL connector
