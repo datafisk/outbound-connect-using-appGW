@@ -138,14 +138,18 @@ resource "azurerm_application_gateway" "main" {
 
   # TCP Backend settings for IBM MQ
   backend {
-    name               = "ibm-mq-backend-settings"
-    port               = var.ibm_mq_backend_port
-    protocol           = "Tcp"
-    timeout_in_seconds = 20
-    probe_name         = "ibm-mq-health-probe"
+    name                     = "ibm-mq-backend-settings"
+    port                     = var.ibm_mq_backend_port
+    protocol                 = "Tcp"
+    timeout_in_seconds       = 20
+    idle_timeout_in_minutes  = var.appgw_idle_timeout_minutes
+    probe_name               = "ibm-mq-health-probe"
   }
 
   # TCP Listener on private frontend for Confluent Cloud Private Link
+  # Note: Azure Application Gateway supports a maximum of 200 listeners per instance
+  # This includes all protocols (HTTP, HTTPS, TCP, TLS). Plan accordingly for large
+  # multi-connector deployments. See MULTI-CONNECTOR.md for details.
   listener {
     name                           = "ibm-mq-listener"
     protocol                       = "Tcp"
@@ -199,11 +203,12 @@ resource "azurerm_application_gateway" "main" {
   dynamic "backend" {
     for_each = length(local.oracle_backend_targets) > 0 ? [1] : []
     content {
-      name               = "oracle-backend-settings"
-      port               = var.oracle_backend_port
-      protocol           = "Tcp"
-      timeout_in_seconds = 20
-      probe_name         = "oracle-health-probe"
+      name                    = "oracle-backend-settings"
+      port                    = var.oracle_backend_port
+      protocol                = "Tcp"
+      timeout_in_seconds      = 20
+      idle_timeout_in_minutes = var.appgw_idle_timeout_minutes
+      probe_name              = "oracle-health-probe"
     }
   }
 
