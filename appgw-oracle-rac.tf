@@ -1,15 +1,6 @@
 # Azure Application Gateway - Add Oracle RAC Routing Rule
 # This adds a TCP routing rule to the existing peter-g-mqtt AppGW
 
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.67"
-    }
-  }
-}
-
 provider "azurerm" {
   features {}
 }

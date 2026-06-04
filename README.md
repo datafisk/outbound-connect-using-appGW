@@ -22,7 +22,9 @@ Application Gateway (Standard v2)
 ### Supported Connectors
 
 - ✅ **IBM MQ Source** - Capture messages from IBM MQ queues
-- ✅ **Oracle XStream CDC** - Change Data Capture from Oracle Database (19c, 21c XE) - **Standalone only, not RAC**
+- ✅ **Oracle XStream CDC** - Change Data Capture from Oracle Database
+  - **Standalone**: Oracle 19c, 21c XE (Docker-based, see [modules/oracle-database](modules/oracle-database))
+  - **Oracle RAC**: 2-node Real Application Clusters for HA (see [OCI RAC Module](modules/oci-oracle-rac/README.md))
 - ✅ **Extensible** - Add SQL Server, MongoDB, REST APIs, etc.
 
 ## Features
@@ -52,9 +54,51 @@ Application Gateway (Standard v2)
 
 ### Flexibility
 - ✅ Optional SSL/TLS support for backend connections
-- ✅ Optional Oracle Database provisioning (Docker-based)
+- ✅ Optional Oracle Database provisioning:
+  - **Standalone**: Docker-based Oracle XE 21c (dev/test)
+  - **Oracle RAC**: 2-node Real Application Clusters with Azure Shared Disks (production HA)
 - ✅ Supports various authentication setups (IBM MQ, Oracle XStream)
 - ✅ Extendable to support other connectors with the same Azure AppGW infra
+
+### Oracle RAC with Confluent Cloud JDBC Connector
+
+Connect Confluent Cloud JDBC Source Connector to **Oracle Real Application Clusters (RAC)** via Azure Application Gateway:
+
+- ✅ **High Availability**: 2-node RAC cluster with automatic failover
+- ✅ **Secure Connectivity**: Private Link (EAP) → AppGW → Oracle RAC
+- ✅ **Terraform Deployment**: Automate connector deployment alongside infrastructure
+- ✅ **Load Balancing**: AppGW distributes connections across RAC nodes (uses least connections algorithm)
+- ✅ **Simplified Setup**: Bypasses SCAN complexity with direct node routing
+- ✅ **DNS Wildcard**: Routes all Oracle hostnames through AppGW
+
+**Deployment Options:**
+
+**Option 1: Terraform (Recommended)**
+```bash
+# Deploy AppGW and Oracle connector together
+terraform apply
+# See: ORACLE-CONNECTOR-TERRAFORM.md
+```
+
+**Option 2: Manual Deployment**
+```bash
+# 40-minute setup (assumes Oracle RAC already deployed)
+# See: ORACLE-RAC-QUICKSTART.md
+```
+
+**Documentation:**
+- **[Terraform Deployment Guide](ORACLE-CONNECTOR-TERRAFORM.md)** - Automate connector deployment (recommended)
+- **[Quick Start Guide](ORACLE-RAC-QUICKSTART.md)** - 40-minute manual setup
+- **[Complete Setup Guide](ORACLE-RAC-APPGW-SETUP.md)** - Detailed configuration and troubleshooting
+- [OCI RAC Deployment](modules/oci-oracle-rac/README.md) - Deploy Oracle RAC on OCI (separate topic)
+- [XStream CDC Setup](ORACLE-XSTREAM-SETUP.md) - Oracle XStream CDC connector (alternative to JDBC)
+
+**Key Architecture Points:**
+- AppGW backend pool uses **node IPs** (not SCAN VIPs) to bypass TNS redirects
+- DNS wildcard in Confluent Cloud catches all Oracle hostnames
+- REMOTE_LISTENER must be FQDN (critical for proper routing)
+- AppGW provides TCP load balancing (bypasses Oracle SCAN load balancing)
+- Recommended: Use **least connections** algorithm for long-lived JDBC connections
 
 ## Security
 
@@ -140,7 +184,9 @@ This infrastructure is now **100% managed by Terraform** with no manual configur
 
 ### Documentation
 - `IBM-MQ-HEARTBEAT.md` - **Critical**: Heartbeat and idle timeout configuration for long-lived connections
-- `TCP-PROXY-SETUP.md` - TCP/TLS proxy setup guide (PowerShell + Portal)
+- `ORACLE-RAC-SETUP.md` - Oracle Real Application Clusters deployment guide (high availability)
+- `ORACLE-XSTREAM-SETUP.md` - Oracle XStream CDC standalone setup guide
+- `TCP-PROXY-SETUP.md` - TCP/TLS proxy setup guide (Terraform + IBM MQ configuration)
 - `SSL-TLS-SETUP.md` - Mutual TLS setup guide with certificate generation
 - `MULTI-CONNECTOR.md` - Multi-connector deployment guide (share infrastructure)
 - `CONFLUENT-SETUP.md` - Confluent Cloud credential setup guide
@@ -209,6 +255,23 @@ Captures change data (INSERT, UPDATE, DELETE) from Oracle Database in real-time 
 - ✅ **Full CDC support** - Initial snapshot + ongoing changes
 
 **Documentation:** [ORACLE-XSTREAM-SETUP.md](ORACLE-XSTREAM-SETUP.md)
+
+### 3. Oracle RAC JDBC Source Connector
+Connect Confluent Cloud to Oracle Real Application Clusters for high availability and scalability.
+
+**Features:**
+- ✅ **JDBC Source Connector** - Standard Oracle connector (timestamp+incrementing mode)
+- ✅ **AppGW Load Balancing** - Distributes connections across RAC nodes (least connections)
+- ✅ **SCAN Bypass Architecture** - Direct node routing via AppGW backend pool
+- ✅ **DNS Wildcard** - Routes all Oracle hostnames through Private Link/AppGW
+- ✅ **VPN Integration** - Supports Azure → OCI connectivity via IPsec
+
+**Documentation:**
+- [Quick Start Guide (45 min)](ORACLE-RAC-QUICKSTART.md) - Assumes RAC already deployed
+- [Complete Setup Guide](ORACLE-RAC-APPGW-SETUP.md) - Detailed configuration and architecture
+- [OCI RAC Deployment](modules/oci-oracle-rac/README.md) - Deploy RAC on OCI (separate topic)
+
+**Note:** This setup requires existing Oracle RAC cluster and Azure VPN to OCI. For standalone Oracle, see [ORACLE-XSTREAM-SETUP.md](ORACLE-XSTREAM-SETUP.md).
 
 ### Critical: Heartbeat and Idle Timeout Configuration
 

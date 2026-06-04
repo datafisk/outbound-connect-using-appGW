@@ -1,0 +1,172 @@
+# OCI Oracle RAC Terraform Configuration
+# Copy this file to terraform.tfvars and fill in your values
+
+# ==============================================================================
+# OCI Authentication
+# ==============================================================================
+# Optional - if not set, will use ~/.oci/config [DEFAULT] profile
+# Uncomment and set these if you want to override the default config
+
+# tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaa..."
+# user_ocid        = "ocid1.user.oc1..aaaaaaaa..."
+# fingerprint      = "xx:xx:xx:xx:..."
+# private_key_path = "~/.oci/oci_api_key.pem"
+# region           = "us-ashburn-1"
+
+# ==============================================================================
+# Resource Configuration - REQUIRED
+# ==============================================================================
+
+# Compartment OCID (get from: oci iam compartment list)
+compartment_id = "ocid1.compartment.oc1..aaaaaaaa..."
+
+# Availability Domain (get from: oci iam availability-domain list)
+# Examples: "AD-1", "AD-2", "AD-3" (varies by region)
+availability_domain = "AD-1"
+
+# ==============================================================================
+# Network Configuration
+# ==============================================================================
+
+# VCN and Subnet CIDRs
+vcn_cidr            = "10.0.0.0/16"
+client_subnet_cidr  = "10.0.1.0/24"
+backup_subnet_cidr  = "10.0.2.0/24"
+
+# ==============================================================================
+# RAC Cluster Configuration
+# ==============================================================================
+
+# Name prefix for all resources
+name_prefix = "confluent-rac"
+
+# RAC cluster name (will be visible in database)
+cluster_name = "confluentrac"
+
+# Hostname prefix for RAC nodes (becomes racnode1, racnode2)
+hostname_prefix = "racnode"
+
+# ==============================================================================
+# Database System Configuration
+# ==============================================================================
+
+# VM Shape - determines CPU, memory, and IOPS
+# Options:
+#   VM.Standard2.1  - 1 CPU, 15 GB RAM (too small for RAC)
+#   VM.Standard2.2  - 2 CPU, 30 GB RAM (minimum for testing)
+#   VM.Standard2.4  - 4 CPU, 60 GB RAM (recommended for testing)
+#   VM.Standard2.8  - 8 CPU, 120 GB RAM (better performance)
+#   VM.Standard2.16 - 16 CPU, 240 GB RAM (production-like)
+db_system_shape = "VM.Standard2.4"
+
+# CPU cores to enable (must be compatible with shape)
+# VM.Standard2.4 has 4 cores available, can enable 1-4
+cpu_core_count = 4
+
+# Data storage size in GB (minimum 256 GB for RAC)
+# Affects cost - more storage = higher cost
+# Recommended: 512 GB for testing, 1024+ GB for production
+data_storage_size_gb = 512
+
+# Oracle Database Edition
+# Options:
+#   STANDARD_EDITION                          - basic features
+#   ENTERPRISE_EDITION                        - more features
+#   ENTERPRISE_EDITION_HIGH_PERFORMANCE       - includes partitioning, compression
+#   ENTERPRISE_EDITION_EXTREME_PERFORMANCE    - all features including RAC (recommended)
+db_edition = "ENTERPRISE_EDITION_EXTREME_PERFORMANCE"
+
+# ==============================================================================
+# Database Configuration - REQUIRED
+# ==============================================================================
+
+# Database admin password (SYS and SYSTEM users)
+# Requirements:
+#   - 9-30 characters
+#   - Must include uppercase, lowercase, and numbers
+#   - No special chars like @ # $ % (causes connection issues)
+db_admin_password = "YourStrongPassword123"
+
+# Database name (max 8 characters, starts with letter)
+db_name = "RACDB"
+
+# Pluggable database name (for Oracle 12c+, leave empty for non-PDB)
+pdb_name = "XSTREAMPDB"
+
+# Oracle Database version
+# Available versions (check with: oci db version list --compartment-id <id>)
+#   19.21.0.0 - Oracle 19c (recommended for XStream CDC)
+#   21.10.0.0 - Oracle 21c
+db_version = "19.21.0.0"
+
+# Database workload type
+# Options: "OLTP" (transactional) or "DSS" (data warehouse)
+db_workload = "OLTP"
+
+# ==============================================================================
+# SSH Access - REQUIRED
+# ==============================================================================
+
+# SSH public key for accessing RAC nodes
+# Get your key: cat ~/.ssh/id_rsa.pub
+# Or generate new: ssh-keygen -t rsa -b 4096 -f ~/.ssh/oci_rac_key
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... your-key-here"
+
+# ==============================================================================
+# License Configuration
+# ==============================================================================
+
+# License model
+# Options:
+#   LICENSE_INCLUDED           - Pay for Oracle license through OCI (~60% more expensive)
+#   BRING_YOUR_OWN_LICENSE     - Use your existing Oracle licenses (cheaper)
+license_model = "BRING_YOUR_OWN_LICENSE"
+
+# ==============================================================================
+# Backup Configuration
+# ==============================================================================
+
+# Enable automatic backups
+auto_backup_enabled = true
+
+# Backup window (UTC time)
+# Options:
+#   null      - use default window
+#   SLOT_ONE  - 00:00-06:00 UTC
+#   SLOT_TWO  - 06:00-12:00 UTC
+#   SLOT_THREE - 12:00-18:00 UTC
+#   SLOT_FOUR - 18:00-00:00 UTC
+auto_backup_window = "SLOT_ONE"
+
+# Number of days to retain backups (1-60)
+recovery_window_in_days = 7
+
+# ==============================================================================
+# Tags (optional)
+# ==============================================================================
+
+tags = {
+  Environment = "Test"
+  Project     = "Confluent-XStream-CDC"
+  ManagedBy   = "Terraform"
+  Owner       = "data-engineering"
+  CostCenter  = "engineering"
+}
+
+# ==============================================================================
+# ESTIMATED MONTHLY COST
+# ==============================================================================
+# Based on the configuration above:
+#
+# VM.Standard2.4 × 2 nodes:                ~$350/month
+# Storage 512 GB:                          ~$50/month
+# Backups (7 days retention):              ~$25/month
+# Network (minimal for testing):           ~$10/month
+# ------------------------------------------------------
+# Total (BYOL):                            ~$435/month
+# Total (LICENSE_INCLUDED):                ~$800/month
+#
+# Note: Actual costs may vary by region and usage
+# Check current pricing: https://www.oracle.com/cloud/price-list.html
+#
+# ==============================================================================
