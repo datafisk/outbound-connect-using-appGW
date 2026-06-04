@@ -84,10 +84,10 @@ resource "azurerm_application_gateway" "peter_g_mqtt_update" {
     }
   }
 
-  # Add new Oracle RAC backend pool
+  # Add new Oracle RAC backend pool (using VIP IPs for RAC failover)
   backend_address_pool {
     name         = "oracle_rac_oci"
-    ip_addresses = ["10.99.1.108", "10.99.1.29"]
+    ip_addresses = ["10.99.1.165", "10.99.1.84"]  # racnode1-vip, racnode2-vip
   }
 
   # Copy existing backend HTTP settings
