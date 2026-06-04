@@ -1,0 +1,29 @@
+{
+  "name": "oracle-rac-jdbc-source",
+  "config": {
+    "connector.class": "OracleDatabaseSource",
+    "kafka.auth.mode": "KAFKA_API_KEY",
+    "kafka.api.key": "3WD2RZRF4GMI53C7",
+    "kafka.api.secret": "cfltVSbs9dw5+zaMakVFGL6ehHLqxcUi+H7vzPeiz8eRnsXgEyJi3cLj2+e2fijw",
+    "tasks.max": "1",
+
+    "connection.host": "172.200.9.19",
+    "connection.port": "1521",
+    "connection.user": "jdbc_connector",
+    "connection.password": "ConFluent_123#",
+    "db.name": "xstreampdb.petertestnodes.peterglab.oraclevcn.com",
+    "oracle.net.ssl_server_dn_match": "false",
+
+    "table.include.list": "JDBC_CONNECTOR.CUSTOMERS",
+    "mode": "timestamp+incrementing",
+    "incrementing.column.mapping": "JDBC_CONNECTOR.CUSTOMERS:[ID]",
+    "timestamp.columns.mapping": "JDBC_CONNECTOR.CUSTOMERS:[UPDATED_AT]",
+
+    "poll.interval.ms": "5000",
+    "batch.max.rows": "100",
+
+    "topic.prefix": "oracle-rac-",
+    "output.data.format": "JSON",
+    "output.key.format": "JSON"
+  }
+}

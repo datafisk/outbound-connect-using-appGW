@@ -1,0 +1,159 @@
+# ============================================================================
+# Oracle JDBC Source Connector Configuration Example
+# ============================================================================
+#
+# This file shows example configuration for deploying the Oracle JDBC Source
+# Connector via Terraform. Copy relevant sections to your terraform.tfvars.
+#
+# Prerequisites:
+# 1. Oracle RAC cluster accessible from Azure AppGW
+# 2. AppGW configured with Oracle backend pool (see appgw-oracle-rac.tf)
+# 3. Confluent Cloud DNS wildcard configured for Oracle domain
+# 4. Oracle database user created with SELECT privileges
+#
+# ============================================================================
+
+# ---------------------------
+# Enable Oracle Connector
+# ---------------------------
+
+create_oracle_connector = true
+
+# ---------------------------
+# Confluent Cloud Credentials
+# ---------------------------
+
+# Cloud API credentials for connector deployment
+confluent_cloud_api_key    = "CLOUD_API_KEY"           # From: confluent api-key create --resource cloud
+confluent_cloud_api_secret = "CLOUD_API_SECRET"
+
+# Environment and Cluster
+confluent_environment_id = "env-xxxxx"                  # Your Confluent Cloud environment ID
+kafka_cluster_id         = "lkc-xxxxx"                  # Your Kafka cluster ID
+
+# Kafka API credentials (for connector to use)
+kafka_api_key    = "KAFKA_API_KEY"                      # From: confluent api-key create --resource lkc-xxxxx
+kafka_api_secret = "KAFKA_API_SECRET"
+
+# ---------------------------
+# Oracle Connection
+# ---------------------------
+
+# Connection hostname
+# Option 1: Use SCAN name with Confluent DNS wildcard
+oracle_connection_host = "racnode-scan.petertestnodes.peterglab.oraclevcn.com"
+
+# Option 2: Use AppGW IP directly if DNS wildcard covers it
+# oracle_connection_host = "172.200.9.19"
+
+oracle_connection_port = 1521
+oracle_username        = "jdbc_connector"
+oracle_password        = "YourSecurePassword123#"
+
+# Database service name (fully qualified: pdb_name.domain)
+oracle_db_name = "xstreampdb.petertestnodes.peterglab.oraclevcn.com"
+
+# SSL/TLS Configuration
+oracle_ssl_server_dn_match = false  # Set to false for self-signed certs or when using IP
+
+# ---------------------------
+# Table Selection and CDC Mode
+# ---------------------------
+
+# Tables to include (comma-separated, format: SCHEMA.TABLE)
+oracle_table_include_list = "JDBC_CONNECTOR.CUSTOMERS,JDBC_CONNECTOR.ORDERS"
+
+# CDC Mode
+# - "timestamp" - Track changes via timestamp column only
+# - "incrementing" - Track changes via auto-incrementing ID only
+# - "timestamp+incrementing" - Track changes via both (recommended)
+# - "bulk" - Bulk load without change tracking
+oracle_mode = "timestamp+incrementing"
+
+# Column mappings (format: SCHEMA.TABLE:[COLUMN])
+oracle_incrementing_column_mapping = "JDBC_CONNECTOR.CUSTOMERS:[ID],JDBC_CONNECTOR.ORDERS:[ORDER_ID]"
+oracle_timestamp_columns_mapping   = "JDBC_CONNECTOR.CUSTOMERS:[UPDATED_AT],JDBC_CONNECTOR.ORDERS:[MODIFIED_AT]"
+
+# ---------------------------
+# Polling Configuration
+# ---------------------------
+
+oracle_poll_interval_ms = 5000  # Poll every 5 seconds
+oracle_batch_max_rows   = 100   # Fetch up to 100 rows per poll
+
+# ---------------------------
+# Output Configuration
+# ---------------------------
+
+oracle_topic_prefix        = "oracle-rac-"    # Topics will be: oracle-rac-JDBC_CONNECTOR_CUSTOMERS
+oracle_output_data_format  = "JSON"           # JSON, AVRO, or PROTOBUF
+oracle_output_key_format   = "JSON"           # JSON, AVRO, or PROTOBUF
+
+# ---------------------------
+# Connector Settings
+# ---------------------------
+
+oracle_connector_name = "oracle-rac-jdbc-source"
+oracle_tasks_max      = 1                     # Number of connector tasks
+
+# ============================================================================
+# Example Configurations
+# ============================================================================
+
+# ---------------------------
+# Example 1: Single Table with Auto-Increment Only
+# ---------------------------
+# oracle_table_include_list = "MYSCHEMA.TRANSACTIONS"
+# oracle_mode = "incrementing"
+# oracle_incrementing_column_mapping = "MYSCHEMA.TRANSACTIONS:[TRANSACTION_ID]"
+# oracle_timestamp_columns_mapping   = ""
+
+# ---------------------------
+# Example 2: Multiple Tables with Timestamp+Incrementing
+# ---------------------------
+# oracle_table_include_list = "SALES.ORDERS,SALES.ORDER_ITEMS,INVENTORY.PRODUCTS"
+# oracle_mode = "timestamp+incrementing"
+# oracle_incrementing_column_mapping = "SALES.ORDERS:[ID],SALES.ORDER_ITEMS:[ITEM_ID],INVENTORY.PRODUCTS:[PRODUCT_ID]"
+# oracle_timestamp_columns_mapping   = "SALES.ORDERS:[CREATED_AT],SALES.ORDER_ITEMS:[CREATED_AT],INVENTORY.PRODUCTS:[UPDATED_AT]"
+
+# ---------------------------
+# Example 3: Timestamp-Only Mode
+# ---------------------------
+# oracle_table_include_list = "AUDIT.EVENTS"
+# oracle_mode = "timestamp"
+# oracle_incrementing_column_mapping = ""
+# oracle_timestamp_columns_mapping   = "AUDIT.EVENTS:[EVENT_TIME]"
+
+# ---------------------------
+# Example 4: High-Volume Configuration
+# ---------------------------
+# oracle_poll_interval_ms = 1000   # Poll every 1 second for lower latency
+# oracle_batch_max_rows   = 500    # Larger batches for higher throughput
+# oracle_tasks_max        = 2      # Multiple tasks for parallelism
+
+# ============================================================================
+# Deployment
+# ============================================================================
+#
+# 1. Configure variables in terraform.tfvars (copy from this example)
+#
+# 2. Deploy AppGW and Oracle connector:
+#    terraform init
+#    terraform plan
+#    terraform apply
+#
+# 3. Verify connector status:
+#    terraform output oracle_connector_status
+#    terraform output oracle_connector_verification_commands
+#
+# 4. Check connector in Confluent Cloud:
+#    confluent connect cluster list
+#    confluent connect cluster describe <connector-id>
+#
+# 5. Verify topics created:
+#    confluent kafka topic list | grep oracle-rac
+#
+# 6. Consume messages:
+#    confluent kafka topic consume oracle-rac-JDBC_CONNECTOR_CUSTOMERS --from-beginning
+#
+# ============================================================================
