@@ -305,6 +305,43 @@ WHERE service_name = '<service>';
 
 ---
 
+## Resolution
+
+### Service Registration Fix
+
+**Action Taken:** Configured RAC service on both instances remotely using jump host
+
+**Commands Executed:**
+```bash
+# SSH from jump host to racnode1
+ssh opc@10.99.1.108
+
+# As oracle user, register service on both RAC instances
+srvctl modify service -d RACDB_86f_phx \
+  -s xstreampdb \
+  -preferred RACDB1,RACDB2
+
+srvctl start service -d RACDB_86f_phx -s xstreampdb
+```
+
+**Verification:**
+```sql
+SELECT s.name, i.instance_name, i.host_name, s.inst_id
+FROM gv$services s, gv$instance i
+WHERE s.inst_id = i.inst_id
+AND s.name = 'xstreampdb';
+
+-- Result: Service now registered on both RACDB1 and RACDB2
+```
+
+**Outcome:**
+- ✅ Service registered on both RAC instances
+- ✅ Both VIPs now accept connections without ORA-12514
+- ✅ Connector resumed successfully
+- ✅ Status: RUNNING with connector host configured as `petertestnodes.peterglab.oraclevcn.com`
+
+---
+
 ## Related Documentation
 
 - [Azure VM Testing Results](AZURE-VM-TESTING-RESULTS.md) - Empirical ORA-12514 evidence
@@ -315,4 +352,5 @@ WHERE service_name = '<service>';
 
 **Test Date:** 2026-06-05  
 **Key Result:** Connector cannot resume after pause when backends return ORA-12514  
-**Status:** Connector requires manual recovery
+**Resolution:** Service registered on both RAC instances  
+**Final Status:** RUNNING
