@@ -1,0 +1,19 @@
+{
+  "name": "{{CONNECTOR_NAME}}",
+  "config": {
+    "connector.class": "MicrosoftSqlServerSink",
+    "kafka.auth.mode": "KAFKA_API_KEY",
+    "kafka.api.key": "{{KAFKA_API_KEY}}",
+    "kafka.api.secret": "{{KAFKA_API_SECRET}}",
+    "connection.host": "{{FAILOVER_GROUP_FQDN}}",
+    "connection.port": "1433",
+    "connection.user": "{{SQL_USERNAME}}",
+    "connection.password": "{{SQL_PASSWORD}}",
+    "db.name": "{{DATABASE_NAME}}",
+    "topics": "{{KAFKA_TOPIC}}",
+    "auto.create": "true",
+    "auto.evolve": "true",
+    "input.data.format": "AVRO",
+    "tasks.max": "1"
+  }
+}

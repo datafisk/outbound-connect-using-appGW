@@ -1,0 +1,172 @@
+# [Pattern Name] Pattern
+
+## TL;DR
+
+[1-2 paragraph summary explaining the problem and the recommended solution. Include cost if applicable.]
+
+Example:
+```
+[Service/Database] deployed with [HA/failover configuration] creates challenges for
+Confluent Cloud connectors because [technical limitation]. This pattern provides
+[number] tested approaches for [solving the problem] with automatic failover and
+private connectivity (~$X/month recommended approach).
+```
+
+## Overview
+
+[What this pattern demonstrates and what problem it solves. Include use case scenarios.]
+
+### The Challenge
+
+[Explain the specific challenges that arise when connecting Confluent Cloud to this service.]
+
+- Challenge 1: [Description]
+- Challenge 2: [Description]
+- Challenge 3: [Description]
+
+### Architecture
+
+```
+[ASCII diagram or link to architecture diagram]
+
+Example:
+┌────────────────────────────────────────┐
+│ Source System (with HA)                │
+│                                         │
+│  primary.example.com                   │
+│  secondary.example.com                 │
+└────────────────────────────────────────┘
+              │
+              │ Private Link
+              ▼
+┌────────────────────────────────────────┐
+│ Confluent Cloud                        │
+│  - Egress Access Points                │
+│  - Connector                           │
+└────────────────────────────────────────┘
+```
+
+[Detailed explanation of how data flows through the system]
+
+## Available Approaches
+
+This pattern provides [number] tested approaches:
+
+### 1. [Approach Name] (Recommended)
+
+**Cost**: ~$X/month
+
+[Description of how this approach works]
+
+**Pros:**
+- ✅ [Benefit 1]
+- ✅ [Benefit 2]
+
+**Cons:**
+- ❌ [Limitation 1]
+- ❌ [Limitation 2]
+
+📁 See: [path/to/approach/](./path/)
+
+### 2. [Alternative Approach]
+
+**Cost**: ~$X/month
+
+[Description]
+
+**Pros:**
+- ✅ [Benefit 1]
+
+**Cons:**
+- ❌ [Limitation 1]
+
+📁 See: [path/to/approach/](./path/)
+
+## Components
+
+- **[Component 1]**: [Description]
+- **[Component 2]**: [Description]
+- **[Component 3]**: [Description]
+
+## Prerequisites
+
+- Confluent Cloud Enterprise cluster (for EAP support)
+- Azure subscription with permissions to create [resources]
+- Azure CLI authenticated
+- Confluent CLI authenticated
+- Terraform >= 1.0
+
+## Quick Start
+
+### Option 1: [Recommended Approach Name]
+
+```bash
+# 1. Deploy infrastructure
+cd terraform/
+terraform init
+terraform apply -var-file=terraform.tfvars
+
+# 2. Setup connectivity
+cd ../[approach-directory]/
+./scripts/setup.sh
+
+# 3. Deploy connector
+cd ../../connector-config/
+./generate-config.sh
+confluent connect cluster create --config-file [connector-name].generated.json
+```
+
+### Option 2: [Alternative Approach]
+
+```bash
+[Steps for alternative approach]
+```
+
+## Testing
+
+See [docs/TESTING.md](./docs/TESTING.md) for:
+- Connectivity verification
+- Failover testing procedures
+- Validation checklists
+
+## Cost Analysis
+
+See [COST-ANALYSIS.md](./COST-ANALYSIS.md) for detailed cost breakdown and comparison.
+
+**Quick Summary:**
+| Approach | Monthly Cost | Notes |
+|----------|--------------|-------|
+| Approach 1 | ~$X | Recommended |
+| Approach 2 | ~$Y | Alternative |
+
+## Documentation
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed technical architecture
+- [COST-ANALYSIS.md](./COST-ANALYSIS.md) - Cost breakdown and comparison
+- [docs/QUICKSTART.md](./docs/QUICKSTART.md) - Step-by-step deployment guide
+- [docs/TESTING.md](./docs/TESTING.md) - Testing and validation procedures
+- [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) - Common issues and solutions
+
+## Key Learnings
+
+### [Finding 1]
+
+[Description of important insight discovered during pattern development]
+
+### [Finding 2]
+
+[Another key insight]
+
+## Limitations
+
+- [Limitation 1]
+- [Limitation 2]
+
+## Related Patterns
+
+- [Other Pattern 1](../other-pattern-1/) - [Relationship description]
+- [Other Pattern 2](../other-pattern-2/) - [Relationship description]
+
+## Support
+
+For issues or questions, see [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).

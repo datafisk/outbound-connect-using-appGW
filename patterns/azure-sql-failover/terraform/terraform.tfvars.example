@@ -1,0 +1,35 @@
+# Azure SQL Failover Group Configuration
+
+# Resource Group
+resource_group_name = "petergustafss-test"
+location_primary    = "westus2"
+location_secondary  = "eastus"
+
+# SQL Server Configuration
+sql_server_primary_name   = "pg-uswest2"
+sql_server_secondary_name = "pg-useast"
+sql_admin_username        = "confluent"
+sql_admin_password        = "YourSecurePassword123!@#"  # Change this!
+
+# Database Configuration
+database_name = "peter-test-db"
+database_sku  = "GP_S_Gen5_2"  # Serverless Gen5, 2 vCores
+
+# Failover Group
+failover_group_name = "peter-fog"
+
+# Networking
+vnet_resource_group = "vpc-peered-cce-se"
+vnet_name           = "vpc-peered-cce-se-vnet"
+subnet_name         = "sql-private-endpoint-subnet"
+
+# Private DNS Zone
+create_private_dns_zone = true  # Set to false if zone already exists
+private_dns_zone_name   = "privatelink.database.windows.net"
+
+# Tags
+tags = {
+  owner_email = "your.email@example.com"
+  project     = "confluent-sql-failover"
+  environment = "test"
+}
