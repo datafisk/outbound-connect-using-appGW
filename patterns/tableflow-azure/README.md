@@ -7,7 +7,7 @@ Confluent Cloud Tableflow writes Iceberg/Delta tables to your ADLS Gen2 storage 
 | Option | Status |
 |--------|--------|
 | 1. EAP → AppGW → NGINX VM (stream, SNI preread) → private endpoints | **Tested**: NGINX logs show blob and dfs traffic from the AppGW subnet; Tableflow resumed and ran after a manual resume |
-| 2. EAP → AppGW → NGINXaaS → private endpoints | **Routing validated**: the same config as option 1 routes both the blob and dfs traffic through NGINXaaS to their private endpoints (see Results). Tableflow data landing in the container through this path was not independently confirmed here |
+| 2. EAP → AppGW → NGINXaaS → private endpoints | **Tested**: the same config as option 1 routes blob and dfs traffic through NGINXaaS to their private endpoints, Tableflow files appear in the container, and Confluent's Tableflow metrics show the writes (see Results) |
 | 3. One EAP + AppGW per hostname (blob, dfs), no NGINX | **Untested.** Expected to work in principle; scales poorly (see below) |
 
 ## Why NGINX is in the path
@@ -105,7 +105,7 @@ Replace the NGINX VM with Azure NGINXaaS running the same config, unchanged. NGI
 
 Logs: the deployment's logging is set to ship `/var/log/nginx/stream-access.log`. The lines arrive in Azure Monitor / Log Analytics as table `NGXOperationLogs`, with the `FilePath` field set to that log file.
 
-Still to check and record here: idle timeouts against the AppGW listener, confirming files land in the container with Tableflow running through NGINXaaS, and cost against the VM.
+Still to check and record here: idle timeouts against the AppGW listener, and cost against the VM.
 
 ### Results
 
@@ -118,6 +118,8 @@ Blob and dfs traffic from the AppGW subnet reached their private endpoints throu
 ```
 [22/Oct/2026:13:14:13 +0000] remote address 172.200.9.5:43862 with SNI name "<account>.dfs.core.windows.net" proxied to "172.200.4.17:443" by listener=172.200.7.11:443 TCP 200 8558 1930 20.000
 ```
+
+Files were confirmed in the storage container, and Confluent's Tableflow metrics show the same writes, with public access to the account disabled.
 
 `172.200.9.5` is an AppGW instance and `172.200.7.11` an NGINXaaS node in its subnet.
 
