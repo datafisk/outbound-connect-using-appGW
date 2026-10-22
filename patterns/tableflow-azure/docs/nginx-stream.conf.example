@@ -1,0 +1,66 @@
+# Same config runs on the self-managed NGINX VM and on NGINXaaS.
+# Routes by TLS SNI without terminating TLS: the SNI name is resolved through the
+# VNet's DNS (168.63.129.16 = Azure DNS, which honours linked private DNS zones),
+# so <account>.blob/.dfs.core.windows.net reach their private endpoints.
+# Adapt the listen ports to what you need; 443 is the one Tableflow uses.
+
+events {}
+stream {
+  map $ssl_preread_server_name $targetBackend {
+     default $ssl_preread_server_name;
+  }
+
+  server {
+    listen 9092;
+    proxy_connect_timeout 1s;
+    proxy_timeout 7200s;
+    resolver 168.63.129.16 valid=30s ipv6=off;
+    proxy_pass $targetBackend:9092;
+    ssl_preread on;
+  }
+
+  server {
+    listen 443;
+    proxy_connect_timeout 1s;
+    proxy_timeout 7200s;
+    resolver 168.63.129.16 valid=30s ipv6=off;
+    proxy_pass $targetBackend:443;
+    ssl_preread on;
+  }
+
+  server {
+    listen 5432;
+    proxy_connect_timeout 1s;
+    proxy_timeout 7200s;
+    resolver 168.63.129.16 valid=30s ipv6=off;
+    proxy_pass $targetBackend:5432;
+    ssl_preread on;
+  }
+
+  server {
+    listen 3306;
+    proxy_connect_timeout 1s;
+    proxy_timeout 7200s;
+    resolver 168.63.129.16 valid=30s ipv6=off;
+    proxy_pass $targetBackend:3306;
+    ssl_preread on;
+  }
+
+  server {
+    listen 1521;
+    proxy_connect_timeout 1s;
+    proxy_timeout 7200s;
+    resolver 168.63.129.16 valid=30s ipv6=off;
+    proxy_pass $targetBackend:1521;
+    ssl_preread on;
+  }
+
+  # Source/listener ports in every line; the destination port is in $upstream_addr.
+  log_format stream_routing '[$time_local] remote address $remote_addr:$remote_port '
+                            'with SNI name "$ssl_preread_server_name" '
+                            'proxied to "$upstream_addr" '
+                            'by listener=$server_addr:$server_port '
+                            '$protocol $status $bytes_sent $bytes_received '
+                            '$session_time';
+  access_log /var/log/nginx/stream-access.log stream_routing;
+}

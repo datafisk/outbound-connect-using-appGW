@@ -10,6 +10,7 @@ Everything specific to a connector (architecture, setup, scripts, costs, testing
 |---------|----------------|
 | [azure-sql-failover](./patterns/azure-sql-failover/) | Azure SQL failover groups: four connectivity options (public, restricted public, dual EAP, EAP + AppGW) |
 | [ibm-mq](./patterns/ibm-mq/) | IBM MQ source with mutual TLS and AppGW idle-timeout/heartbeat alignment |
+| [tableflow-azure](./patterns/tableflow-azure/) | Tableflow to ADLS Gen2 over Private Link via AppGW and NGINX or NGINXaaS SNI routing |
 | [oracle-rac](./patterns/oracle-rac/) | Oracle RAC (JDBC / XStream) via AppGW, bypassing SCAN VIPs; OCI and Azure test environments |
 
 ## Structure
@@ -25,11 +26,8 @@ patterns/
     docs/                  setup, testing, troubleshooting
   _template/               starting point for a new pattern
 scripts/deploy-pattern.sh  guided deployment helper
-docs/, infrastructure/, examples/   shared material (placeholders for now)
 archive/                   old research
 ```
-
-Files at the repo root other than this README (the `*.md` guides, `*.tf`, `connectors/`) are the original pre-restructure layout, kept until their content is fully folded into the pattern folders.
 
 ## Adding a pattern
 
