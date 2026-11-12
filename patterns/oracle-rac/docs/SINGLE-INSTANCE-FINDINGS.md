@@ -1,5 +1,7 @@
 # Single-Instance Database on 2-Node RAC Cluster - Test Findings
 
+> **Terminology:** "single-instance" here means a 2-node RAC where the database **service is registered on only one node**. It does not mean a one-node cluster. The AppGW pattern requires the service on every node in the backend pool; this document covers what happens when it is not.
+
 ## Customer Scenario
 
 **Configuration:**
@@ -201,10 +203,10 @@ backend_address_pool {
 
 **Cons:**
 - ❌ Requires DNS infrastructure setup
-- ❌ TNS redirect may not work with Confluent Cloud EAP architecture
+- ❌ **Not validated and not expected to work from Confluent Cloud**: the SCAN listener replies with a TNS redirect to a VIP or Oracle-internal hostname that the connector cannot resolve or reach, and the AppGW cannot rewrite it
 - ❌ Additional network configuration complexity
 
-**Use Case:** Environments with established cross-cloud DNS infrastructure.
+**Status:** Not recommended. Use the VIP-based pool described above, with the service on every pooled node.
 
 ---
 
@@ -215,7 +217,7 @@ backend_address_pool {
 | **Standard RAC (service on all nodes)** | Both VIPs | ✅ Full HA | ❌ None |
 | **Single-instance (service on one node)** | Single VIP only | ❌ No HA | ❌ None |
 | **Single-instance with both VIPs** | Both VIPs | ⚠️  Partial | 🔴 **~50% failures** |
-| **SCAN with DNS** | SCAN FQDN | ✅ Full HA | ❌ None |
+| **SCAN FQDN as backend** | SCAN FQDN | ⚠️ Not validated; redirect expected to fail from Confluent Cloud | Unknown |
 
 ---
 
@@ -365,7 +367,7 @@ The customer's analysis is **technically accurate** and their concern is **valid
 
 ## Related Documentation
 
-- [Oracle RAC HA Testing](ORACLE-RAC-HA-TESTING.md)
+- [Oracle RAC HA Testing](HA-TESTING-XSTREAM.md)
 - [Oracle RAC Quick Start](ORACLE-RAC-QUICKSTART.md)
 - [Oracle RAC AppGW Setup](ORACLE-RAC-APPGW-SETUP.md)
 - [Test Plan](TEST-PLAN-SINGLE-INSTANCE-RAC.md)

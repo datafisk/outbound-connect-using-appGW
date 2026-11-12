@@ -2,14 +2,14 @@
 
 ## TL;DR
 
-Connect Confluent Cloud fully managed JDBC Source or XStream connectors to Oracle RAC clusters with high availability using Azure Application Gateway to bypass SCAN VIP limitations. AppGW load balances across RAC nodes directly, enabling automatic failover when nodes fail (~$150-180/month for AppGW + Oracle compute costs).
+Connect Confluent Cloud fully managed JDBC Source or XStream connectors to Oracle RAC clusters with high availability using Azure Application Gateway to bypass SCAN listener redirects. AppGW load balances across the RAC node VIPs directly (~$150-180/month for AppGW + Oracle compute costs). XStream node-failure behaviour was tested on a 2-node RAC: no data loss, but recovery after some failures is manual (see [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md)).
 
 ## Overview
 
 This pattern demonstrates how to deploy Confluent Cloud fully managed connectors to Oracle Real Application Clusters (RAC) with:
 
 - **High Availability**: Automatic failover across RAC nodes
-- **SCAN VIP Bypass**: Direct connection to RAC node IPs via Application Gateway
+- **SCAN Bypass**: Direct connection to the RAC node VIPs via Application Gateway (no SCAN redirect)
 - **XStream or JDBC**: Support for both connector types
 - **Multi-Cloud**: Works with Oracle Cloud Infrastructure (OCI), Azure VMs, or on-premises RAC
 - **Private Connectivity**: Via Confluent Egress Access Points
@@ -18,10 +18,11 @@ This pattern demonstrates how to deploy Confluent Cloud fully managed connectors
 
 Oracle RAC presents unique challenges for Confluent Cloud connectors:
 
-1. **SCAN VIP Complexity**: RAC uses SCAN (Single Client Access Name) VIPs that round-robin DNS, but Confluent egress DNS doesn't support this pattern
-2. **Node Failover**: Connectors must handle RAC node failures gracefully
-3. **REMOTE_LISTENER Configuration**: Must use FQDNs, not IPs, but FQDNs don't resolve in Confluent egress without custom DNS entries
-4. **Cross-Cloud Connectivity**: RAC often lives in OCI or on-premises, requiring network connectivity to Azure
+1. **SCAN listener redirects**: A client connects to the SCAN name, and the SCAN listener answers with a TNS *redirect* to a node listener address (the VIP endpoint registered through `LOCAL_LISTENER`). The client then opens a second connection to that address. From Confluent Cloud that second hop fails: the redirect target is a private VIP or an Oracle-internal hostname that egress DNS can't resolve and the Egress Access Point can't reach. The AppGW is a Layer 4 TCP proxy, so it can't see or rewrite the redirect.
+2. **Workaround**: Point the hostname the connector uses at the AppGW (egress DNS entry), and make the AppGW backend pool the **node VIPs**. The connector then talks straight to a node listener and the SCAN listener is never contacted.
+3. **Service must exist on every node in the pool**: SCAN normally routes by service. The AppGW can't, and its TCP health probe can't detect a node without the service (`ORA-12514`).
+4. **Node Failover**: Connectors must handle RAC node failures gracefully
+5. **Cross-Cloud Connectivity**: RAC often lives in OCI or on-premises, requiring network connectivity to Azure
 
 ### Architecture
 
@@ -29,11 +30,11 @@ Oracle RAC presents unique challenges for Confluent Cloud connectors:
 ┌──────────────────────────────────────────────────────────┐
 │ Oracle RAC Cluster (OCI/Azure/On-Prem)                   │
 │                                                           │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐        │
-│  │ RAC Node 1 │  │ RAC Node 2 │  │ RAC Node 3 │        │
-│  │ 10.99.1.108│  │ 10.99.1.29 │  │ 10.99.1.50 │        │
-│  │ Port: 1521 │  │ Port: 1521 │  │ Port: 1521 │        │
-│  └────────────┘  └────────────┘  └────────────┘        │
+│  ┌──────────────┐  ┌──────────────┐                     │
+│  │ RAC Node 1   │  │ RAC Node 2   │                     │
+│  │ <node1-ip>  │  │ <node2-ip>  │                     │
+│  │ Port: 1521   │  │ Port: 1521   │                     │
+│  └──────────────┘  └──────────────┘                     │
 │                                                           │
 │  SCAN VIP: racnode-scan.domain.com                       │
 │  (Bypassed - not used by connector)                      │
@@ -44,8 +45,7 @@ Oracle RAC presents unique challenges for Confluent Cloud connectors:
 ┌──────────────────────────────────────────────────────────┐
 │ Azure Application Gateway                                 │
 │                                                           │
-│  Backend Pool: [10.99.1.108, 10.99.1.29, 10.99.1.50]    │
-│  Load Balancing: Least Connections                       │
+│  Backend Pool: [<node1-vip>, <node2-vip>]               │
 │  Health Probe: TCP port 1521                             │
 │  Listener: TCP 1521                                      │
 │  Private IP: 172.200.X.X                                 │
@@ -76,16 +76,13 @@ Deploy Oracle RAC natively on OCI and connect via:
 
 📁 See: [terraform/oci/](./terraform/oci/)
 
-### 2. Azure Virtual Machines
+### 2. Azure Virtual Machines (not viable)
 
-**Platform**: Oracle RAC on Azure VMs
+**Platform**: Oracle RAC on self-managed Azure VMs
 
-Deploy Oracle RAC on Azure VMs (complex, not recommended for production):
-- Requires manual Oracle installation and RAC configuration
-- Shared storage setup (NFS or Azure NetApp Files)
-- Only for testing/PoC
+Not supported. We tried a 2-node Oracle Grid Infrastructure 19c install on Azure VMs. Azure has no multicast (worked around with a VXLAN overlay), but Grid Infrastructure 19c would only create a `STANDALONE` cluster or a `DOMAIN` cluster that needs GNS and DHCP control, which Azure doesn't provide. Multi-node RAC never formed. Details: [archive/oracle-rac-research/ORACLE-RAC-AZURE-FINDINGS.md](../../archive/oracle-rac-research/ORACLE-RAC-AZURE-FINDINGS.md).
 
-📁 See: [terraform/azure/](./terraform/azure/)
+Azure is still the right place for the **Application Gateway and Confluent egress**, with RAC itself on OCI or on-premises. [terraform/azure/](./terraform/azure/) is not an Azure RAC deployment: it deploys the Confluent Cloud connector with Terraform.
 
 ### 3. On-Premises RAC
 
@@ -135,48 +132,45 @@ cp terraform.tfvars.example terraform.tfvars
 terraform init
 terraform apply
 
-# Note the RAC node IPs from outputs
-terraform output rac_node_ips
+# The outputs list the VIP OCIDs (vip_ids), not the addresses. Get the VIP IPs from the
+# OCI console (DB system > nodes) or on a node: srvctl config vip -node <node>
+terraform output vip_ids
 ```
 
 ### Option 2: Use Existing RAC
 
 If you have existing Oracle RAC:
 
-1. **Get RAC node private IPs:**
-```sql
--- On RAC, check node IPs
-SELECT instance_name, host_name, version FROM v$instance;
+1. **Get the RAC node VIPs** (not the SCAN addresses, not the node's physical IPs):
+```bash
+# As the grid user on a RAC node
+srvctl config vip -node <node1>
+srvctl config vip -node <node2>
 ```
 
-2. **Configure REMOTE_LISTENER (CRITICAL):**
+2. **Check the service is registered on every node** and leave the listener parameters at their defaults:
 ```sql
--- On EACH RAC node
-ALTER SYSTEM SET REMOTE_LISTENER='racnode-scan.yourdomain.com:1521' SCOPE=BOTH;
-ALTER SYSTEM REGISTER;
-
--- Verify (must be FQDN, not IPs)
-SELECT name, value FROM v$parameter WHERE name = 'remote_listener';
+-- LOCAL_LISTENER is the node VIP endpoint, REMOTE_LISTENER is the SCAN name:port. Do not change either.
+SELECT inst_id, name, value FROM gv$parameter WHERE name IN ('local_listener','remote_listener');
+SELECT inst_id, name FROM gv$active_services WHERE name NOT LIKE 'SYS%';
 ```
+The service the connector uses must appear for **every** instance whose VIP is in the AppGW pool.
 
 ### Configure Application Gateway
 
-See [docs/APPGW-SETUP.md](./docs/APPGW-SETUP.md) or use the AppGW module:
+See [docs/APPGW-SETUP.md](./docs/APPGW-SETUP.md), or add the route to an existing gateway with the script (dry run by default; it only adds objects and never replaces the gateway):
 
 ```bash
-cd egress-access-points/appgw-scan/
-
-# Edit variables for your RAC node IPs
-# Deploy AppGW backend configuration
-terraform init
-terraform apply
+cd egress-access-points/appgw-scan/scripts
+./setup.sh <appgw-rg> <appgw-name> 1521 <node1-vip> <node2-vip>           # prints the az commands
+./setup.sh <appgw-rg> <appgw-name> 1521 <node1-vip> <node2-vip> --apply
 ```
 
 **Key AppGW Configuration:**
-- Backend pool: All RAC node IPs
-- Load balancing: **Least Connections** (best for RAC)
-- Health probe: TCP port 1521
-- Timeout: 60 seconds minimum
+- Listener: plain TCP (not TLS)
+- Backend pool: all RAC node **VIPs**
+- Health probe: TCP port 1521 (only checks the port, not the service)
+- Idle timeout: 900 seconds (long-lived database connections)
 
 ### Deploy Connector
 
@@ -221,9 +215,11 @@ nc -zv <appgw-ip> 1521
 sqlplus jdbc_connector/<password>@<appgw-ip>:1521/<service_name>
 ```
 
-## Testing High Availability
+## Testing High Availability (XStream)
 
-See [docs/HA-TESTING.md](./docs/HA-TESTING.md) for complete HA testing procedures.
+> The HA results in this repo are for the **XStream CDC connector only**, not the JDBC Source connector.
+
+See [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md) for complete HA testing procedures.
 
 **Quick HA Test:**
 
@@ -238,17 +234,21 @@ SELECT instance_name, host_name, status FROM v$instance;
 sudo shutdown -h now
 ```
 
-3. **Verify connector continues:**
+3. **Verify the connector and XStream:**
 ```bash
 confluent connect cluster describe <connector-id>
-# Should remain RUNNING
 ```
+```sql
+SELECT status FROM dba_xstream_outbound;   -- expect ATTACHED
+```
+If the stopped node hosted the XStream outbound server, expect `DISABLED` and follow the recovery steps in [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md).
 
-4. **Check AppGW routes to healthy node:**
+4. **Check the AppGW still reaches a healthy node:**
+
+`az network application-gateway show-backend-health` returns nothing for TCP pools, so test through the gateway instead, from a VM that can reach its private frontend IP:
 ```bash
-az network application-gateway show-backend-health \
-  --name <appgw-name> \
-  --resource-group <rg>
+sqlplus <user>/<password>@//<appgw-private-ip>:1521/<service_name>
+# repeat a few times and check SELECT instance_name FROM v$instance;
 ```
 
 ## Cost Analysis
@@ -286,32 +286,29 @@ Lower cost but requires manual intervention during RAC node failures.
 
 - [docs/QUICKSTART.md](./docs/QUICKSTART.md) - Step-by-step deployment guide
 - [docs/APPGW-SETUP.md](./docs/APPGW-SETUP.md) - Application Gateway configuration
-- [docs/HA-TESTING.md](./docs/HA-TESTING.md) - High availability testing procedures
+- [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md) - High availability testing procedures
 - [docs/XSTREAM-SETUP.md](./docs/XSTREAM-SETUP.md) - XStream CDC connector setup
 - [docs/SINGLE-INSTANCE-FINDINGS.md](./docs/SINGLE-INSTANCE-FINDINGS.md) - Single-instance RAC analysis
 - [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) - Common issues
 
 ## Key Learnings
 
-### REMOTE_LISTENER Must Use FQDNs, Not IPs
+### SCAN Redirects Don't Work with Confluent Egress
 
-Oracle RAC's `REMOTE_LISTENER` parameter **must** be set to FQDNs (like `racnode-scan.domain.com:1521`), not IP addresses.
+The SCAN listener doesn't serve the session. It replies with a TNS redirect to a node listener address, and the client reconnects there. From Confluent Cloud that address (a node VIP or an Oracle-internal hostname) isn't resolvable or routable, so the connection fails.
 
-**Why this matters**: RAC nodes register themselves with the REMOTE_LISTENER. When services query the listener, Oracle returns the `REMOTE_LISTENER` value. If this is an IP, connections work. If it's an FQDN that doesn't resolve (like in Confluent egress), connections fail.
+**Solution**: Point the connector's hostname at the AppGW with a Confluent egress DNS entry, and use the node VIPs as the AppGW backend pool. The SCAN listener is never contacted, so there is no redirect. You give up SCAN's service-aware load balancing.
 
-**Solution**: Application Gateway bypasses this by connecting directly to node IPs, avoiding REMOTE_LISTENER entirely.
+### REMOTE_LISTENER and LOCAL_LISTENER: Leave the Defaults
 
-### SCAN VIPs Don't Work with Confluent Egress
+- `REMOTE_LISTENER` (normally `<scan-name>:1521`) only controls where instances register with the SCAN listeners. It is not part of the connector's path and does not need to change.
+- `LOCAL_LISTENER` is the node VIP endpoint. It is what a SCAN redirect would hand to a client, and it is why the AppGW pool must use the **VIPs**: by default the node listener binds the VIP, not the physical IP.
 
-Oracle's SCAN (Single Client Access Name) uses round-robin DNS to distribute connections across RAC nodes. Confluent egress DNS doesn't support this pattern.
+Earlier versions of these docs said `REMOTE_LISTENER` must be an FQDN. That was not verified and is no longer a requirement.
 
-**Solution**: Application Gateway load balances directly to node IPs using health probes, providing the same effect as SCAN.
+### Load Balancing Across Nodes
 
-### Use "Least Connections" Load Balancing
-
-Oracle RAC connections are long-lived. Round-robin load balancing can create imbalances as some connections stay active while others close.
-
-**Solution**: AppGW's "Least Connections" algorithm ensures even distribution of active connections.
+The AppGW distributes new TCP connections across healthy backends. In the OCI retest, 10/10 connections through the gateway succeeded and landed on both RACDB1 and RACDB2. Connections are long-lived, so balance is only evaluated when a connection is opened.
 
 ### Single-Instance RAC is Viable for Testing
 
@@ -329,28 +326,18 @@ When a RAC node fails, active connections may get `ORA-12514: TNS:listener does 
 
 ## Known Limitations
 
-1. **REMOTE_LISTENER FQDN Requirement**: Must be configured but creates DNS resolution challenges
-2. **Cross-Cloud Networking**: Requires VPN/ExpressRoute/FastConnect setup
-3. **Oracle Licensing**: Ensure proper licensing for multi-cloud deployment
-4. **XStream Limitations**: Requires Oracle 11g or later with XStream license
+1. **Service on every pooled node**: The AppGW can't detect `ORA-12514` on a node that lacks the service. Use a uniform service, or put only nodes that carry it in the pool. See [docs/SINGLE-INSTANCE-FINDINGS.md](./docs/SINGLE-INSTANCE-FINDINGS.md).
+2. **XStream recovery after a node failure can be manual**: If the instance hosting the XStream outbound server goes down, `XOUT` is DISABLED and the connector does not self-recover (observed for 55 to 63 min). Re-enable `XOUT`, then pause/resume the connector. No rows were lost. Connector status can read RUNNING while stalled, so monitor `dba_xstream_outbound.status`. See [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md).
+3. **TLS and hostname validation**: With TLS on the Oracle listener, the egress DNS name used in `connection.host` must be in the certificate the connector sees, or hostname validation must be disabled (less secure). Not tested in this repo. See [docs/APPGW-SETUP.md](./docs/APPGW-SETUP.md) step 3.3.
+4. **Cross-Cloud Networking**: Requires VPN/ExpressRoute/FastConnect setup
+5. **Oracle Licensing**: Ensure proper licensing for multi-cloud deployment
+6. **XStream licensing and versions**: Confluent's documentation states that no additional Oracle license is needed to use XStream through the Confluent Cloud XStream CDC connector (covered by an agreement between Confluent and Oracle). Check the current [connector documentation](https://docs.confluent.io/cloud/current/connectors/cc-oracle-xstream-cdc-source/cc-oracle-xstream-cdc-source-features.html) for supported Oracle versions and terms. This pattern was tested on 19c.
 
-## Automation Scripts
+## Automation
 
-### deploy-oci-rac.sh
-
-Deploys complete Oracle RAC on OCI:
-```bash
-cd terraform/oci/
-./deploy-oci-rac.sh
-```
-
-### configure-appgw.sh
-
-Configures AppGW for RAC:
-```bash
-cd egress-access-points/appgw-scan/
-./configure-appgw.sh <rac-node-ips>
-```
+- [terraform/oci/](./terraform/oci/): deploys the 2-node RAC on OCI (`terraform apply`).
+- [egress-access-points/appgw-scan/scripts/setup.sh](./egress-access-points/appgw-scan/scripts/setup.sh): adds the pool, probe, settings, listener and rule for the RAC nodes to an existing Application Gateway.
+- [terraform/azure/](./terraform/azure/): deploys the Confluent Cloud connector with Terraform.
 
 ## Related Patterns
 

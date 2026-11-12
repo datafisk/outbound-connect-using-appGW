@@ -272,7 +272,7 @@ For single-instance database on RAC:
 - [ ] Phase 3: Test both VIPs with service on one node (expect failures)
 - [ ] Phase 4: Test single VIP (expect success)
 - [ ] Phase 5: Test failover with single VIP (expect no HA)
-- [ ] Document results in ORACLE-RAC-HA-TESTING.md
+- [ ] Document results in HA-TESTING-XSTREAM.md
 - [ ] Restore service registration to both nodes
 - [ ] Restore both VIPs in backend pool
 

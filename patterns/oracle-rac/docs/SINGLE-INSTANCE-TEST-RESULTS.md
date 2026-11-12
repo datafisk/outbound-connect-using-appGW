@@ -344,9 +344,9 @@ AND s.name = 'xstreampdb';
 
 ## Related Documentation
 
-- [Azure VM Testing Results](AZURE-VM-TESTING-RESULTS.md) - Empirical ORA-12514 evidence
-- [Single-Instance RAC Findings](SINGLE-INSTANCE-RAC-FINDINGS.md) - Technical analysis
-- [Oracle RAC HA Testing](ORACLE-RAC-HA-TESTING.md) - High availability validation
+- [Azure VM Testing Results](AZURE-VM-TESTING.md) - Empirical ORA-12514 evidence
+- [Single-Instance RAC Findings](SINGLE-INSTANCE-FINDINGS.md) - Technical analysis
+- [Oracle RAC HA Testing](HA-TESTING-XSTREAM.md) - High availability validation
 
 ---
 
