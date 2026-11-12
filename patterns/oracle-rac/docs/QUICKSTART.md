@@ -207,4 +207,4 @@ confluent kafka topic consume oracle-rac-<SCHEMA>.<TABLE> --from-beginning
 
 ## Total Setup Time: ~40 minutes
 
-For detailed explanations and advanced configuration, see [ORACLE-RAC-APPGW-SETUP.md](./ORACLE-RAC-APPGW-SETUP.md)
+For detailed explanations and advanced configuration, see [APPGW-SETUP.md](./APPGW-SETUP.md)

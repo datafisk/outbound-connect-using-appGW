@@ -212,9 +212,9 @@ VM and associated resources deleted after testing.
 
 ## Related Documentation
 
-- [Single-Instance RAC Findings](SINGLE-INSTANCE-RAC-FINDINGS.md)
-- [Single-Instance RAC Test Plan](TEST-PLAN-SINGLE-INSTANCE-RAC.md)
-- [Oracle RAC HA Testing](HA-TESTING-XSTREAM.md)
+- [Single-Instance RAC Findings](./SINGLE-INSTANCE-FINDINGS.md)
+- [Single-Instance RAC Test Plan](./TEST-PLAN.md)
+- [Oracle RAC HA Testing](../../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)
 
 ---
 

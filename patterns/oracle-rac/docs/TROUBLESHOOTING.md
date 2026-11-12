@@ -430,7 +430,7 @@ CREATE INDEX idx_<table>_<id_column> ON <schema>.<table>(<id_column>);
 
 **Solution:**
 
-See [XSTREAM-SETUP.md](./XSTREAM-SETUP.md) for complete setup, or quick check:
+See [XSTREAM-SETUP.md](../../oracle-rac-xstream/docs/XSTREAM-SETUP.md) for complete setup, or quick check:
 
 ```sql
 -- Check if XStream is configured
@@ -578,7 +578,7 @@ If you're still experiencing issues:
 
 2. **Check documentation:**
    - [QUICKSTART.md](./QUICKSTART.md)
-   - [HA-TESTING-XSTREAM.md](./HA-TESTING-XSTREAM.md)
+   - [HA-TESTING-XSTREAM.md](../../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)
    - [APPGW-SETUP.md](./APPGW-SETUP.md)
 
 3. **Oracle resources:**
@@ -594,5 +594,5 @@ If you're still experiencing issues:
 
 - [../README.md](../README.md) - Pattern overview
 - [QUICKSTART.md](./QUICKSTART.md) - Deployment guide
-- [HA-TESTING-XSTREAM.md](./HA-TESTING-XSTREAM.md) - High availability testing
+- [HA-TESTING-XSTREAM.md](../../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md) - High availability testing
 - [APPGW-SETUP.md](./APPGW-SETUP.md) - Application Gateway configuration

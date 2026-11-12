@@ -185,7 +185,7 @@ A service on one instance only breaks connector configuration validation (`ORA-1
 
 ### 4. Application Gateway
 
-Backend pool = the node VIPs (not SCAN, not host IPs). TCP listener on 1521 and a TCP backend setting with idle timeout 900 s. Commands for TCP listeners and rules use `az network application-gateway routing-rule` (not `rule`). See [APPGW-SETUP.md](./APPGW-SETUP.md).
+Backend pool = the node VIPs (not SCAN, not host IPs). TCP listener on 1521 and a TCP backend setting with idle timeout 900 s. Commands for TCP listeners and rules use `az network application-gateway routing-rule` (not `rule`). See [APPGW-SETUP.md](../../oracle-rac/docs/APPGW-SETUP.md).
 
 Notes:
 - `az network application-gateway show-backend-health` returns nothing for TCP pools. Test each VIP directly from a VM in the AppGW subnet instead (`nc -zv <vip> 1521`).

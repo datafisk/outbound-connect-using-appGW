@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Connect Confluent Cloud fully managed JDBC Source or XStream connectors to Oracle RAC clusters with high availability using Azure Application Gateway to bypass SCAN listener redirects. AppGW load balances across the RAC node VIPs directly (~$150-180/month for AppGW + Oracle compute costs). XStream node-failure behaviour was tested on a 2-node RAC: no data loss, but recovery after some failures is manual (see [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md)).
+Connect Confluent Cloud fully managed JDBC Source or XStream connectors to Oracle RAC clusters with high availability using Azure Application Gateway to bypass SCAN listener redirects. AppGW load balances across the RAC node VIPs directly (~$150-180/month for AppGW + Oracle compute costs). XStream node-failure behaviour was tested on a 2-node RAC: no data loss, but recovery after some failures is manual (see [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)). The LogMiner-based Oracle CDC Source connector was tested in the same scenarios and recovered without manual action (see [docs/HA-TESTING-LOGMINER.md](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md)).
 
 ## Overview
 
@@ -203,7 +203,7 @@ confluent connect cluster create --config-file oracle-jdbc-source.json
 
 #### For XStream (CDC) Connector:
 
-See [docs/XSTREAM-SETUP.md](./docs/XSTREAM-SETUP.md) for complete XStream configuration.
+See [docs/XSTREAM-SETUP.md](../oracle-rac-xstream/docs/XSTREAM-SETUP.md) for complete XStream configuration.
 
 ### Verify Connectivity
 
@@ -215,11 +215,21 @@ nc -zv <appgw-ip> 1521
 sqlplus jdbc_connector/<password>@<appgw-ip>:1521/<service_name>
 ```
 
+## Connector options
+
+The gateway, egress and RAC setup in this folder are shared. Each connector has its own folder with setup, test results and a connector template:
+
+| Connector | Folder | Summary of the RAC test results |
+|-----------|--------|---------------------------------|
+| Oracle XStream CDC Source | [oracle-rac-xstream](../oracle-rac-xstream/README.md) | No data loss, but recovery after some node failures is manual |
+| Oracle CDC Source (LogMiner) | [oracle-rac-logminer](../oracle-rac-logminer/README.md) | Recovered from every tested failure without manual action; higher latency |
+| Oracle JDBC Source | [oracle-rac-jdbc](../oracle-rac-jdbc/) | In progress |
+
 ## Testing High Availability (XStream)
 
 > The HA results in this repo are for the **XStream CDC connector only**, not the JDBC Source connector.
 
-See [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md) for complete HA testing procedures.
+See [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md) for complete HA testing procedures.
 
 **Quick HA Test:**
 
@@ -241,7 +251,7 @@ confluent connect cluster describe <connector-id>
 ```sql
 SELECT status FROM dba_xstream_outbound;   -- expect ATTACHED
 ```
-If the stopped node hosted the XStream outbound server, expect `DISABLED` and follow the recovery steps in [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md).
+If the stopped node hosted the XStream outbound server, expect `DISABLED` and follow the recovery steps in [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md).
 
 4. **Check the AppGW still reaches a healthy node:**
 
@@ -286,8 +296,10 @@ Lower cost but requires manual intervention during RAC node failures.
 
 - [docs/QUICKSTART.md](./docs/QUICKSTART.md) - Step-by-step deployment guide
 - [docs/APPGW-SETUP.md](./docs/APPGW-SETUP.md) - Application Gateway configuration
-- [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md) - High availability testing procedures
-- [docs/XSTREAM-SETUP.md](./docs/XSTREAM-SETUP.md) - XStream CDC connector setup
+- [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md) - High availability testing procedures
+- [docs/XSTREAM-SETUP.md](../oracle-rac-xstream/docs/XSTREAM-SETUP.md) - XStream CDC connector setup
+- [docs/HA-TESTING-LOGMINER.md](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md) - High availability testing, Oracle CDC Source (LogMiner) connector
+- [docs/LOGMINER-SETUP.md](../oracle-rac-logminer/docs/LOGMINER-SETUP.md) - Oracle CDC Source (LogMiner) connector setup
 - [docs/SINGLE-INSTANCE-FINDINGS.md](./docs/SINGLE-INSTANCE-FINDINGS.md) - Single-instance RAC analysis
 - [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) - Common issues
 
@@ -327,7 +339,7 @@ When a RAC node fails, active connections may get `ORA-12514: TNS:listener does 
 ## Known Limitations
 
 1. **Service on every pooled node**: The AppGW can't detect `ORA-12514` on a node that lacks the service. Use a uniform service, or put only nodes that carry it in the pool. See [docs/SINGLE-INSTANCE-FINDINGS.md](./docs/SINGLE-INSTANCE-FINDINGS.md).
-2. **XStream recovery after a node failure can be manual**: If the instance hosting the XStream outbound server goes down, `XOUT` is DISABLED and the connector does not self-recover (observed for 55 to 63 min). Re-enable `XOUT`, then pause/resume the connector. No rows were lost. Connector status can read RUNNING while stalled, so monitor `dba_xstream_outbound.status`. See [docs/HA-TESTING-XSTREAM.md](./docs/HA-TESTING-XSTREAM.md).
+2. **XStream recovery after a node failure can be manual**: If the instance hosting the XStream outbound server goes down, `XOUT` is DISABLED and the connector does not self-recover (observed for 55 to 63 min). Re-enable `XOUT`, then pause/resume the connector. No rows were lost. Connector status can read RUNNING while stalled, so monitor `dba_xstream_outbound.status`. See [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md).
 3. **TLS and hostname validation**: With TLS on the Oracle listener, the egress DNS name used in `connection.host` must be in the certificate the connector sees, or hostname validation must be disabled (less secure). Not tested in this repo. See [docs/APPGW-SETUP.md](./docs/APPGW-SETUP.md) step 3.3.
 4. **Cross-Cloud Networking**: Requires VPN/ExpressRoute/FastConnect setup
 5. **Oracle Licensing**: Ensure proper licensing for multi-cloud deployment

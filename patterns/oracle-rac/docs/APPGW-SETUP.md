@@ -617,7 +617,7 @@ This architecture enables Confluent Cloud to connect to Oracle RAC via:
 **Trade-offs:**
 - Lose Oracle RAC's service-aware load balancing
 - The AppGW's TCP probe cannot see `ORA-12514`
-- XStream node-failure behaviour is in [HA-TESTING-XSTREAM.md](./HA-TESTING-XSTREAM.md): data is not lost, but recovery after some failures is manual
+- XStream node-failure behaviour is in [HA-TESTING-XSTREAM.md](../../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md): data is not lost, but recovery after some failures is manual
 
 ---
 

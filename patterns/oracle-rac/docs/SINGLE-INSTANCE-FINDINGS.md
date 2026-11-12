@@ -367,7 +367,7 @@ The customer's analysis is **technically accurate** and their concern is **valid
 
 ## Related Documentation
 
-- [Oracle RAC HA Testing](HA-TESTING-XSTREAM.md)
-- [Oracle RAC Quick Start](ORACLE-RAC-QUICKSTART.md)
-- [Oracle RAC AppGW Setup](ORACLE-RAC-APPGW-SETUP.md)
-- [Test Plan](TEST-PLAN-SINGLE-INSTANCE-RAC.md)
+- [Oracle RAC HA Testing](../../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)
+- [Oracle RAC Quick Start](./QUICKSTART.md)
+- [Oracle RAC AppGW Setup](./APPGW-SETUP.md)
+- [Test Plan](./TEST-PLAN.md)

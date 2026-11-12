@@ -3,11 +3,11 @@
   "config": {
     "connector.class": "OracleDatabaseSource",
     "kafka.auth.mode": "KAFKA_API_KEY",
-    "kafka.api.key": "3WD2RZRF4GMI53C7",
-    "kafka.api.secret": "cfltVSbs9dw5+zaMakVFGL6ehHLqxcUi+H7vzPeiz8eRnsXgEyJi3cLj2+e2fijw",
+    "kafka.api.key": "<KAFKA_API_KEY>",
+    "kafka.api.secret": "<KAFKA_API_SECRET>",
     "tasks.max": "1",
 
-    "connection.host": "172.200.9.19",
+    "connection.host": "<EGRESS_DNS_NAME>",
     "connection.port": "1521",
     "connection.user": "jdbc_connector",
     "connection.password": "<ORACLE_PASSWORD>",

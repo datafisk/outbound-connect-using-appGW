@@ -162,7 +162,7 @@ Conclusions:
 ## Related documentation
 
 - [XSTREAM-SETUP.md](./XSTREAM-SETUP.md): database and connector setup, including the RAC walk-through
-- [APPGW-SETUP.md](./APPGW-SETUP.md): Application Gateway configuration
-- [SINGLE-INSTANCE-FINDINGS.md](./SINGLE-INSTANCE-FINDINGS.md)
-- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-- [Repository README](../README.md)
+- [APPGW-SETUP.md](../../oracle-rac/docs/APPGW-SETUP.md): Application Gateway configuration
+- [SINGLE-INSTANCE-FINDINGS.md](../../oracle-rac/docs/SINGLE-INSTANCE-FINDINGS.md)
+- [TROUBLESHOOTING.md](../../oracle-rac/docs/TROUBLESHOOTING.md)
+- [Repository README](../../oracle-rac/README.md)
