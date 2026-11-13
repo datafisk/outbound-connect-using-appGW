@@ -1,5 +1,7 @@
 # Test Plan: Single-Instance Database on 2-Node RAC Cluster
 
+> **Earlier lab (June 2026).** This document records a previous round of testing on an earlier RAC deployment. Host names, IP addresses and identifiers are placeholders or examples. It is kept as evidence for the `ORA-12514` behaviour when a service exists on only one node. For current per-connector results on the OCI RAC see [CONNECTOR-COMPARISON.md](./CONNECTOR-COMPARISON.md).
+
 ## Customer Scenario
 
 **Setup:**
@@ -145,7 +147,7 @@ az network application-gateway address-pool update \
   -g <resource-group> \
   --gateway-name <appgw-name> \
   -n oracle_rac_oci \
-  --servers 10.99.1.84  # Only racnode2-vip
+  --servers 10.0.1.84  # Only racnode2-vip
 ```
 
 **Test Steps:**
@@ -272,7 +274,7 @@ For single-instance database on RAC:
 - [ ] Phase 3: Test both VIPs with service on one node (expect failures)
 - [ ] Phase 4: Test single VIP (expect success)
 - [ ] Phase 5: Test failover with single VIP (expect no HA)
-- [ ] Document results in ORACLE-RAC-HA-TESTING.md
+- [ ] Document results in HA-TESTING-XSTREAM.md
 - [ ] Restore service registration to both nodes
 - [ ] Restore both VIPs in backend pool
 

@@ -7,8 +7,8 @@ Connect Confluent Cloud JDBC Source Connector to Oracle RAC through Azure Applic
 ```
 Confluent Cloud → EAP → AppGW → [Network] → Oracle RAC Nodes
                         ↓
-                  Bypasses SCAN VIPs
-                  Direct to Node IPs
+                  Bypasses the SCAN listener
+                  Direct to the node VIPs
 ```
 
 **Note:** Assumes network connectivity exists between AppGW and Oracle RAC (VPN, Direct Connect, etc.)
@@ -24,18 +24,14 @@ Confluent Cloud → EAP → AppGW → [Network] → Oracle RAC Nodes
 
 ## Configuration Steps
 
-### 1. Oracle RAC - Configure REMOTE_LISTENER (5 min)
+### 1. Oracle RAC - Check Listener and Service (5 min)
 
-**Critical**: Must be FQDN, not IPs.
+**Critical**: The connector's service must be registered on **every** node whose VIP goes in the AppGW pool. Leave `LOCAL_LISTENER` and `REMOTE_LISTENER` at their defaults.
 
 ```sql
--- On each RAC node
-ALTER SYSTEM SET REMOTE_LISTENER='racnode-scan.<your-domain>:1521' SCOPE=BOTH;
-ALTER SYSTEM REGISTER;
-
--- Verify
-SELECT name, value FROM v$parameter WHERE name = 'remote_listener';
--- Should show FQDN, not IPs
+SELECT inst_id, name, value FROM gv$parameter WHERE name IN ('local_listener','remote_listener');
+SELECT inst_id, name FROM gv$active_services WHERE name NOT LIKE 'SYS%';
+-- The service must appear for each instance
 ```
 
 ### 2. Oracle RAC - Create Database User (5 min)
@@ -50,10 +46,13 @@ GRANT SELECT ON <schema>.<table> TO jdbc_connector;
 
 ### 3. Azure AppGW - Configure Backend Pool (10 min)
 
-Get RAC node **private IPs** (not SCAN VIPs):
+Get the RAC node **VIPs** (not the SCAN addresses, not the physical IPs):
 
 ```bash
-# Example: 10.99.1.108, 10.99.1.29
+# As the grid user on a RAC node
+srvctl config vip -node <node1>
+srvctl config vip -node <node2>
+# Example: <node1-vip>, <node2-vip>
 ```
 
 Add backend pool to AppGW:
@@ -63,20 +62,20 @@ az network application-gateway address-pool create \
   --gateway-name <appgw-name> \
   --resource-group <rg-name> \
   --name oracle_rac_oci \
-  --servers 10.99.1.108 10.99.1.29
+  --servers <node1-vip> <node2-vip>
 ```
 
 ### 4. Azure AppGW - Configure Listener & Routing (10 min)
 
 ```bash
-# Backend settings (use least connections for best load balancing)
+# Backend settings (900 s idle timeout for long-lived database connections)
 az network application-gateway settings create \
   --gateway-name <appgw-name> \
   --resource-group <rg-name> \
   --name oracle_1521 \
   --port 1521 \
   --protocol Tcp \
-  --timeout 60
+  --timeout 900
 
 # TCP listener
 az network application-gateway listener create \
@@ -87,7 +86,7 @@ az network application-gateway listener create \
   --frontend-ip appGwPrivateFrontendIpIPv4
 
 # Routing rule
-az network application-gateway rule create \
+az network application-gateway routing-rule create \
   --gateway-name <appgw-name> \
   --resource-group <rg-name> \
   --name route-to-oracle-rac \
@@ -100,22 +99,24 @@ az network application-gateway rule create \
 ### 5. Verify AppGW Health (2 min)
 
 ```bash
-az network application-gateway show-backend-health \
-  --name <appgw-name> \
-  --resource-group <rg-name>
+# show-backend-health returns nothing for TCP pools, so test through the gateway
+# from a VM that can reach the AppGW private frontend IP. Repeat a few times:
+sqlplus <user>/<password>@//<appgw-private-ip>:1521/<service_name> <<< "SELECT instance_name FROM v\$instance;"
 
-# Both RAC nodes should show "Healthy"
+# instance_name should alternate between the RAC instances
 ```
 
-### 6. Confluent Cloud - Configure DNS Wildcard (5 min)
+### 6. Confluent Cloud - Configure Egress DNS (5 min)
 
 In Confluent Cloud Console → Environment → Network → DNS:
 
-- **Hostname pattern**: `*.<your-oracle-domain>`
-- **Example**: `*.petertestnodes.peterglab.oraclevcn.com`
-- **Target**: EAP endpoint or AppGW IP (via EAP)
+- **Domain**: the hostname you will use as `connection.host`
+- **Example**: `oracle.<your-domain>`
+- **Target**: the EAP that routes to the AppGW private frontend IP
 
-**Why**: Catches all Oracle hostname references and routes through AppGW.
+**Why**: The connector's hostname must resolve to the AppGW. The name is only a label (it need not match the SCAN or node names); the AppGW forwards to the VIPs.
+
+**If Oracle uses TLS (TCPS):** keep the AppGW listener a plain TCP pass-through so the TLS stays end to end between the connector and the database. The name is then no longer arbitrary: the connector checks Oracle's certificate against `connection.host`, so the name must be in the certificate's SAN/CN, or hostname validation must be disabled on the connector (less secure). See [APPGW-SETUP.md](./APPGW-SETUP.md) step 3.3.
 
 ### 7. Deploy JDBC Source Connector (5 min)
 
@@ -124,29 +125,24 @@ Create `oracle-connector.json`:
 ```json
 {
   "name": "oracle-rac-jdbc-source",
-  "config": {
-    "connector.class": "OracleDatabaseSource",
-    "kafka.auth.mode": "KAFKA_API_KEY",
-    "kafka.api.key": "<your-api-key>",
-    "kafka.api.secret": "<your-api-secret>",
-    "tasks.max": "1",
-    
-    "connection.host": "racnode-scan.<your-domain>",
-    "connection.port": "1521",
-    "connection.user": "jdbc_connector",
-    "connection.password": "<password>",
-    "db.name": "<pdb_name>.<domain>",
-    
-    "table.include.list": "<SCHEMA>.<TABLE>",
-    "mode": "timestamp+incrementing",
-    "incrementing.column.mapping": "<SCHEMA>.<TABLE>:[<ID_COL>]",
-    "timestamp.columns.mapping": "<SCHEMA>.<TABLE>:[<TS_COL>]",
-    
-    "poll.interval.ms": "5000",
-    "batch.max.rows": "100",
-    "topic.prefix": "oracle-rac-",
-    "output.data.format": "JSON"
-  }
+  "connector.class": "OracleDatabaseSource",
+  "kafka.auth.mode": "KAFKA_API_KEY",
+  "kafka.api.key": "<your-api-key>",
+  "kafka.api.secret": "<your-api-secret>",
+  "tasks.max": "1",
+  "connection.host": "oracle.<your-domain>",
+  "connection.port": "1521",
+  "connection.user": "jdbc_connector",
+  "connection.password": "<password>",
+  "db.name": "<pdb_name>.<domain>",
+  "table.include.list": "<SCHEMA>.<TABLE>",
+  "mode": "timestamp+incrementing",
+  "incrementing.column.mapping": "<SCHEMA>.<TABLE>:[<ID_COL>]",
+  "timestamp.columns.mapping": "<SCHEMA>.<TABLE>:[<TS_COL>]",
+  "poll.interval.ms": "5000",
+  "batch.max.rows": "100",
+  "topic.prefix": "oracle-rac-",
+  "output.data.format": "JSON"
 }
 ```
 
@@ -184,8 +180,10 @@ confluent kafka topic consume oracle-rac-<SCHEMA>.<TABLE> --from-beginning
 | Error | Cause | Fix |
 |-------|-------|-----|
 | "Oracle Database server is unreachable" | Network connectivity | Check network connectivity, AppGW health, firewall rules |
-| "Got minus one from a read call" | REMOTE_LISTENER is IP not FQDN | `ALTER SYSTEM SET REMOTE_LISTENER='<scan-fqdn>:1521'` |
-| "Unknown host specified" | Missing DNS wildcard | Add `*.<domain>` wildcard in Confluent Cloud |
+| "Got minus one from a read call" | Connection redirected or closed before the handshake | `connection.host` must resolve to the AppGW (not a SCAN IP), pool must hold VIPs, listener must be plain TCP |
+| "Unknown host specified" | No egress DNS entry for `connection.host` | Add an entry for that hostname in Confluent Cloud, targeting the EAP |
+| TLS error: "certificate does not match" / `No subject alternative names matching` | Oracle's certificate doesn't cover the egress DNS name | Use a name that is in the certificate, reissue the certificate, or disable hostname validation (less secure) |
+| ORA-12514 on some connections | Service not registered on every pooled node | Register the service on all nodes, or pool only nodes that carry it |
 | Backend "Unhealthy" | Firewall/routing issue | Check firewall allows TCP 1521 from AppGW subnet |
 | Connector RUNNING but no data | Column mapping wrong | Verify incrementing/timestamp columns exist and have correct format |
 
@@ -193,14 +191,15 @@ confluent kafka topic consume oracle-rac-<SCHEMA>.<TABLE> --from-beginning
 
 ## Key Points
 
-✅ **REMOTE_LISTENER must be FQDN** - Critical for proper hostname routing  
-✅ **AppGW backend = Node IPs** - NOT SCAN VIPs (10.99.1.x, not SCAN VIP addresses)  
-✅ **DNS wildcard required** - Routes all Oracle hostnames through AppGW  
-✅ **SCAN bypassed** - Direct node connections, AppGW provides load balancing  
-✅ **Use least connections** - Better for long-lived JDBC connections  
+✅ **AppGW backend = node VIPs** - not the SCAN addresses, not the physical IPs  
+✅ **Egress DNS entry for `connection.host`** - resolves to the EAP in front of the AppGW (with TCPS, the name must also match Oracle's certificate)  
+✅ **SCAN bypassed** - Direct node connections, no TNS redirect  
+✅ **Service on every pooled node** - the AppGW cannot detect ORA-12514  
+✅ **Leave REMOTE_LISTENER / LOCAL_LISTENER at defaults**  
+✅ **Idle timeout 900 s** - long-lived JDBC connections  
 
 ---
 
 ## Total Setup Time: ~40 minutes
 
-For detailed explanations and advanced configuration, see [ORACLE-RAC-APPGW-SETUP.md](./ORACLE-RAC-APPGW-SETUP.md)
+For detailed explanations and advanced configuration, see [APPGW-SETUP.md](./APPGW-SETUP.md)

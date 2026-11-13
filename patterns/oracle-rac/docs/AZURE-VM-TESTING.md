@@ -1,5 +1,7 @@
 # Azure VM Testing Results - Single-Instance RAC Scenario
 
+> **Earlier lab (June 2026).** This document records a previous round of testing on an earlier RAC deployment. Host names, IP addresses and identifiers are placeholders or examples. It is kept as evidence for the `ORA-12514` behaviour when a service exists on only one node. For current per-connector results on the OCI RAC see [CONNECTOR-COMPARISON.md](./CONNECTOR-COMPARISON.md).
+
 ## Test Overview
 
 **Objective:** Empirically test ORA-12514 scenario where database service is registered on only one RAC node using Azure VM with network access to Oracle RAC infrastructure.
@@ -7,7 +9,7 @@
 **Date:** 2026-06-04
 
 **Test Environment:**
-- Azure VM: `rac-test-vm` (172.200.1.4) in test-nodes subnet
+- Azure VM: `rac-test-vm` (172.16.1.4) in test-nodes subnet
 - Oracle Instant Client: 23.4.0.24.05
 - Python cx_Oracle driver for connection testing
 
@@ -19,9 +21,9 @@
 
 | Target | IP Address | TCP:1521 |
 |--------|------------|----------|
-| racnode1-vip | 10.99.1.165 | ✅ Reachable |
-| racnode2-vip | 10.99.1.84 | ✅ Reachable |
-| AppGW Frontend | 172.200.9.19 | ✅ Reachable |
+| racnode1-vip | 10.0.1.165 | ✅ Reachable |
+| racnode2-vip | 10.0.1.84 | ✅ Reachable |
+| AppGW Frontend | 172.16.9.19 | ✅ Reachable |
 
 ### Database Connection Testing (Phase 3-4)
 
@@ -29,18 +31,18 @@
 
 | Target | Success | ORA-12514 | Other Errors |
 |--------|---------|-----------|--------------|
-| **racnode1-vip** (10.99.1.165) | 0% | **50%** | 50% timeout |
-| **racnode2-vip** (10.99.1.84) | 0% | **100%** | 0% |
-| **AppGW** (172.200.9.19) | 0% | **70%** | 30% closed |
+| **racnode1-vip** (10.0.1.165) | 0% | **50%** | 50% timeout |
+| **racnode2-vip** (10.0.1.84) | 0% | **100%** | 0% |
+| **AppGW** (172.16.9.19) | 0% | **70%** | 30% closed |
 
 **Test Output:**
 ```
-Testing racnode2-vip (10.99.1.84):
-  Service: xstreampdb.petertestnotes.peterglab.oraclevcn.com
+Testing racnode2-vip (10.0.1.84):
+  Service: xstreampdb.<subnet-label>.<vcn-label>.oraclevcn.com
   ❌ ORA-12514: 10/10 (100%)
   Error: "Service XSTREAMPDB is not registered"
 
-Testing AppGW (172.200.9.19):
+Testing AppGW (172.16.9.19):
   ❌ ORA-12514: 7/10 (70%)
   ❌ Connection closed: 3/10 (30%)
 ```
@@ -212,9 +214,9 @@ VM and associated resources deleted after testing.
 
 ## Related Documentation
 
-- [Single-Instance RAC Findings](SINGLE-INSTANCE-RAC-FINDINGS.md)
-- [Single-Instance RAC Test Plan](TEST-PLAN-SINGLE-INSTANCE-RAC.md)
-- [Oracle RAC HA Testing](ORACLE-RAC-HA-TESTING.md)
+- [Single-Instance RAC Findings](./SINGLE-INSTANCE-FINDINGS.md)
+- [Single-Instance RAC Test Plan](./TEST-PLAN.md)
+- [Oracle RAC HA Testing](../../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)
 
 ---
 

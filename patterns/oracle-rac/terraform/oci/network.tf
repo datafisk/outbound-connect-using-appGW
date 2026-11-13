@@ -150,23 +150,3 @@ resource "oci_core_subnet" "rac_client_subnet" {
 locals {
   client_subnet_id = var.use_existing_client_subnet ? data.oci_core_subnet.existing_client_subnet[0].id : oci_core_subnet.rac_client_subnet[0].id
 }
-
-# Always create backup subnet (required for Oracle RAC)
-resource "oci_core_subnet" "rac_backup_subnet" {
-  compartment_id             = var.compartment_id
-  vcn_id                     = local.vcn_id
-  display_name               = "${var.name_prefix}-backup-subnet"
-  cidr_block                 = var.backup_subnet_cidr
-  route_table_id             = var.use_existing_vcn ? null : oci_core_route_table.rac_public_rt[0].id
-  security_list_ids          = var.use_existing_vcn ? null : [oci_core_security_list.rac_security_list[0].id]
-  dns_label                  = "backup"
-  prohibit_public_ip_on_vnic = false
-  prohibit_internet_ingress  = false
-
-  freeform_tags = merge(
-    var.tags,
-    {
-      Name = "${var.name_prefix}-backup-subnet"
-    }
-  )
-}

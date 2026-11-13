@@ -79,7 +79,6 @@ Deploy a Confluent connector pattern
 Available patterns:
   azure-sql-failover    Azure SQL Server with failover group
   ibm-mq                IBM MQ Source connector
-  oracle-rac            Oracle Real Application Clusters
 
 Options:
   --approach <name>     Specify deployment approach (pattern-specific)
@@ -90,7 +89,6 @@ Options:
 Examples:
   $0 azure-sql-failover --approach dual-eap
   $0 ibm-mq
-  $0 oracle-rac --skip-connector
 
 EOF
     exit 1
@@ -167,9 +165,6 @@ main() {
         ibm-mq)
             deploy_ibm_mq
             ;;
-        oracle-rac)
-            deploy_oracle_rac
-            ;;
         *)
             print_error "Deployment logic not implemented for: $PATTERN"
             print_info "Please follow the pattern's README.md for manual deployment"
@@ -188,8 +183,8 @@ deploy_azure_sql_failover() {
     # Determine approach
     if [ -z "$APPROACH" ]; then
         print_info "No approach specified. Available approaches:"
-        echo "  1. dual-eap  (Recommended, ~\$15/month)"
-        echo "  2. appgw     (Alternative, ~\$150-180/month)"
+        echo "  1. dual-eap  (Recommended)"
+        echo "  2. appgw     (Alternative)"
         read -p "Select approach (1 or 2): " choice
         case $choice in
             1) APPROACH="dual-eap" ;;
@@ -265,13 +260,6 @@ deploy_azure_sql_failover() {
 deploy_ibm_mq() {
     print_info "Deploying IBM MQ pattern..."
     print_warn "Deployment logic for IBM MQ not yet implemented"
-    print_info "Please follow: $PATTERN_DIR/README.md"
-}
-
-# Oracle RAC deployment
-deploy_oracle_rac() {
-    print_info "Deploying Oracle RAC pattern..."
-    print_warn "Deployment logic for Oracle RAC not yet implemented"
     print_info "Please follow: $PATTERN_DIR/README.md"
 }
 

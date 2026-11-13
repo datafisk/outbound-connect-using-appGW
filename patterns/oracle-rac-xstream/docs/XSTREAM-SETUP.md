@@ -1,5 +1,7 @@
 # Oracle XStream CDC Connector Setup Guide
 
+> **Scope: Oracle XStream CDC Source connector only.** The Oracle JDBC Source connector has different prerequisites and failure behaviour and is not covered here.
+
 This guide explains how to set up Oracle Database with XStream CDC and connect it to Confluent Cloud via Private Link through Azure Application Gateway.
 
 ## Architecture
@@ -69,7 +71,7 @@ terraform apply
 If you already have Oracle Database running, configure it for XStream and point the connector to it.
 
 **Prerequisites:**
-- Oracle Database 19c or 21c (Standalone only - RAC not supported)
+- Oracle Database 19c or 21c, standalone or RAC (for RAC, follow [XStream on Oracle RAC](#xstream-on-oracle-rac) below)
 - Network access from Application Gateway subnet
 - XStream configured (see below)
 
@@ -109,6 +111,122 @@ cd /tmp/scripts
 
 ---
 
+## XStream on Oracle RAC
+
+Validated on a 2-node Oracle 19c RAC (OCI DB System) behind an Azure Application Gateway TCP listener. Failure behaviour is in [HA-TESTING-XSTREAM.md](./HA-TESTING-XSTREAM.md).
+
+### How the connection works
+
+```
+Confluent connector
+  -> Egress Access Point -> DNS name (egress DNS record) -> AppGW private frontend :1521
+  -> AppGW TCP backend pool = node VIPs (e.g. 10.0.1.167, 10.0.1.38)
+  -> node listener on the VIP -> database service (registered on EVERY instance)
+```
+
+Do not point the pool at the SCAN VIP. The SCAN listener answers with a redirect to a node VIP or an Oracle-internal host name that Confluent cannot resolve, so the client cannot follow it. Pointing the pool at the node VIPs means the node listener serves the connection directly and no redirect occurs. `REMOTE_LISTENER` does not need to change.
+
+### 1. Database prerequisites (run on one node, as SYSDBA)
+
+```sql
+-- ARCHIVELOG must be on
+SELECT log_mode FROM v$database;
+
+ALTER SYSTEM SET enable_goldengate_replication = TRUE SCOPE = BOTH SID = '*';
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
+-- streams pool: leave Oracle to auto-size, or set explicitly (for example 256M) on every instance
+```
+
+Create the XStream administrator in the CDB (common user, name must start with `C##`), then grant XStream admin privileges following the [Confluent Oracle XStream prerequisites](https://docs.confluent.io/cloud/current/connectors/cc-oracle-xstream-cdc-source.html) and Oracle's `DBMS_XSTREAM_AUTH.GRANT_ADMIN_PRIVILEGE`. Oracle password profiles may require two or more special characters.
+
+Create the schema and the capture tables in the PDB. Enable supplemental logging for the tables (`ALTER TABLE ... ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS`) so that updates and deletes carry full row images.
+
+### 2. Create the outbound server (as `C##GGADMIN` in the CDB)
+
+```sql
+DECLARE
+  tables  DBMS_UTILITY.UNCL_ARRAY;
+  schemas DBMS_UTILITY.UNCL_ARRAY;
+BEGIN
+  tables(1) := 'ORDERMGMT.ORDERS';
+  tables(2) := 'ORDERMGMT.ORDER_ITEMS';
+  tables(3) := 'ORDERMGMT.CUSTOMERS';
+  tables(4) := 'ORDERMGMT.PRODUCTS';
+  DBMS_XSTREAM_ADM.CREATE_OUTBOUND(
+    server_name     => 'XOUT',
+    source_container_name => '<PDB_NAME>',
+    table_names     => tables,
+    schema_names    => schemas);
+END;
+/
+```
+
+`CREATE_OUTBOUND` creates the capture process, the queue and the outbound server. Check:
+
+```sql
+SELECT server_name, capture_name, queue_name, connect_user, status FROM dba_xstream_outbound;
+SELECT capture_name, status FROM dba_capture;
+```
+
+Expected: capture `ENABLED`, outbound server `DETACHED` until a client attaches, then `ATTACHED`.
+
+Status values: `DETACHED` (enabled, no client), `ATTACHED` (client connected), `DISABLED` (stopped, needs `dbms_xstream_adm.start_outbound`), `ABORTED`.
+
+### 3. Database service for the connector
+
+Use a service that exists on **all** instances. The default CDB service (`<db_unique_name>.<db_domain>`) is registered on every instance and works. If you create a dedicated service, add it to every instance:
+
+```bash
+srvctl add service -db <db_unique_name> -service xstrcdb -preferred RACDB1,RACDB2
+srvctl start service -db <db_unique_name> -service xstrcdb
+```
+
+A service on one instance only breaks connector configuration validation (`ORA-12514`), see [HA-TESTING-XSTREAM.md](./HA-TESTING-XSTREAM.md#5-single-instance-service-does-not-work-hb11).
+
+### 4. Application Gateway
+
+Backend pool = the node VIPs (not SCAN, not host IPs). TCP listener on 1521 and a TCP backend setting with idle timeout 900 s. Commands for TCP listeners and rules use `az network application-gateway routing-rule` (not `rule`). See [APPGW-SETUP.md](../../oracle-rac/docs/APPGW-SETUP.md).
+
+Notes:
+- `az network application-gateway show-backend-health` returns nothing for TCP pools. Test each VIP directly from a VM in the AppGW subnet instead (`nc -zv <vip> 1521`).
+- The TCP probe only checks that the port accepts connections. It cannot detect a missing database service.
+- Make sure the OCI VCN CIDR is listed on exactly **one** Azure local network gateway or route. An overlap with another site-to-site connection on the same hub gateway causes intermittent `ORA-12170` and lost flows.
+- Allow TCP 1521 from the AppGW subnet to the VIPs in the OCI security list or NSG.
+
+### 5. Connector settings
+
+| Setting | Value |
+|---------|-------|
+| `database.hostname` | Egress DNS name that resolves to the AppGW frontend |
+| `database.port` | 1521 |
+| `database.service.name` | The CDB service from step 3 |
+| `database.dbname` | CDB name (for example `RACDB`) |
+| `database.pdb.name` | PDB name |
+| `database.out.server.name` | `XOUT` |
+| `table.include.list` | `ORDERMGMT[.](ORDERS|ORDER_ITEMS|CUSTOMERS|PRODUCTS)` |
+
+### 6. Verify end to end
+
+```sql
+-- in the PDB, as the schema owner
+INSERT INTO ordermgmt.customers (...) VALUES (...);
+COMMIT;
+```
+
+The row appeared on `<topic.prefix>.ORDERMGMT.CUSTOMERS` about 3 s later in testing.
+
+### Single-instance RAC
+
+With one node and one VIP the pool has a single backend and the steps above are unchanged. Register the service on that node. For RAC One Node (service on one node at a time) use a pool with only the active node's VIP; a pool with both VIPs fails with ORA-12514 on reconnect (see [HA-TESTING-XSTREAM.md](./HA-TESTING-XSTREAM.md#single-node-deployments)).
+
+### 7. Operating a RAC with XStream
+
+- Monitor `dba_xstream_outbound.status` (expect `ATTACHED`) and lag. Connector status alone can read RUNNING while the outbound server is DISABLED.
+- After a node restart, check XStream status. If `DISABLED`, run `EXEC dbms_xstream_adm.start_outbound('XOUT');`, then pause the connector, wait until the pause has applied and the old `C##GGADMIN` session has disappeared from `gv$session`, then resume it. Do not wait for the session before pausing: a stalled task keeps its database connection until the pause takes effect.
+- See [HA-TESTING-XSTREAM.md](./HA-TESTING-XSTREAM.md) for the measured behaviour in six failure scenarios.
+
+---
+
 ## Post-Deployment Steps
 
 ### 1. Create XStream Outbound Server
@@ -143,7 +261,7 @@ EXIT;
 **Expected output:**
 ```
 SERVER_NAME  CAPTURE_NAME  CONNECT_USER  STATUS
-XOUT         CAPTURE$...   C##GGADMIN    DISABLED
+XOUT         CAPTURE$...   C##GGADMIN    DETACHED
 ```
 
 ### 2. Add Oracle Backend to Application Gateway
@@ -280,20 +398,6 @@ connector_tasks_max        = "4"  # More tasks if capturing multiple schemas
 oracle_memory_mb = 8000  # Default is 4000 MB
 oracle_vm_size   = "Standard_D8s_v3"  # 8 vCPUs, 32 GB RAM
 ```
-
----
-
-## Cost Estimate (Option 1: Provisioned Oracle)
-
-- Application Gateway Standard_v2: ~$90-110/month (shared with IBM MQ)
-- Oracle VM (Standard_D4s_v3): ~$140/month
-- Storage (256 GB Premium SSD): ~$30/month
-- **Total additional cost for Oracle: ~$170/month**
-
-**Cost Savings:**
-- No Oracle license fees (XE edition is free)
-- Shared Application Gateway (vs dedicated: saves ~$100/month)
-- Auto-shutdown Oracle VM when not in use to save costs
 
 ---
 

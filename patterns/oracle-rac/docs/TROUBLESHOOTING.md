@@ -13,7 +13,7 @@ Common issues and solutions for Oracle RAC connector deployment with Application
 
 **Causes:**
 1. Service not registered with listener
-2. REMOTE_LISTENER not configured correctly
+2. Service not running on every node whose VIP is in the AppGW pool (the AppGW's TCP probe cannot see this)
 3. Service name typo in connection string
 4. Listener not running
 
@@ -27,13 +27,14 @@ lsnrctl services
 -- Should show your service name under each node listener
 ```
 
-2. **Check REMOTE_LISTENER configuration:**
+2. **Check the service runs on every pooled node:**
 ```sql
-SELECT name, value FROM v$parameter WHERE name = 'remote_listener';
+SELECT inst_id, name FROM gv$active_services WHERE name NOT LIKE 'SYS%';
 
--- Must be FQDN, not IP addresses
--- Example: racnode-scan.domain.com:1521
+-- The connector's service must appear for each instance whose VIP is in the AppGW pool.
+-- If a node lacks it, ORA-12514 hits whichever share of connections the AppGW sends there.
 ```
+Leave `REMOTE_LISTENER` and `LOCAL_LISTENER` at their defaults.
 
 3. **Re-register services:**
 ```sql
@@ -52,6 +53,17 @@ SELECT name FROM v$services WHERE name NOT LIKE 'SYS%';
 -- Use exact service name in JDBC URL:
 -- jdbc:oracle:thin:@//<host>:1521/<service_name>
 ```
+
+### Error: TLS handshake / "certificate does not match" / "No subject alternative names matching"
+
+**Cause**: The Oracle listener uses TLS (TCPS) and the hostname in `connection.host` (the egress DNS name) is not in Oracle's certificate, which the connector sees through the AppGW's TCP pass-through listener.
+
+**Solutions:**
+1. Issue or choose a certificate whose SAN/CN includes the egress DNS name
+2. Or disable hostname/DN validation on the connector (less secure; for JDBC, `oracle.net.ssl_server_dn_match=false`)
+3. Confirm the AppGW listener is a TCP (pass-through) listener. TLS termination on the AppGW is not covered by this repo
+
+See [APPGW-SETUP.md](./APPGW-SETUP.md) step 3.3.
 
 ### Error: "ORA-12170: TNS:Connect timeout occurred"
 
@@ -91,7 +103,7 @@ az network application-gateway address-pool show \
   --resource-group <rg> \
   --name <pool-name>
 
-# IPs must match actual RAC node IPs
+# IPs must match the RAC node VIPs
 ```
 
 4. **Check firewall rules:**
@@ -118,11 +130,10 @@ oci network security-list get --security-list-id <id>
 
 1. **Check AppGW backend health:**
 ```bash
-az network application-gateway show-backend-health \
-  --name <appgw-name> \
-  --resource-group <rg>
-
-# All nodes should show "Healthy"
+# show-backend-health returns nothing for TCP pools. Test through the gateway instead,
+# from a VM that can reach the AppGW private frontend IP, and check each VIP directly:
+sqlplus <user>/<password>@//<appgw-private-ip>:1521/<service_name>
+sqlplus <user>/<password>@//<node-vip>:1521/<service_name>
 ```
 
 2. **Review health probe configuration:**
@@ -155,16 +166,16 @@ ORDER BY inst_id;
 - Connector cannot find database service
 
 **Causes:**
-1. REMOTE_LISTENER not set
+1. `REMOTE_LISTENER` changed from the default (`<scan-name>:1521`) or unreachable
 2. Services not started
 3. Listener configuration issue
 
 **Solutions:**
 
-1. **Set REMOTE_LISTENER on all nodes:**
+1. **Restore the default REMOTE_LISTENER and register:**
 ```sql
--- MUST use FQDN, not IPs
-ALTER SYSTEM SET REMOTE_LISTENER='racnode-scan.domain.com:1521' SCOPE=BOTH SID='*';
+-- Default is the SCAN name and port
+ALTER SYSTEM SET REMOTE_LISTENER='<scan-name>:1521' SCOPE=BOTH SID='*';
 
 -- Register immediately
 ALTER SYSTEM REGISTER;
@@ -188,17 +199,16 @@ cat $ORACLE_HOME/network/admin/listener.ora
 # Should have LISTENER entry for port 1521
 ```
 
-### REMOTE_LISTENER Shows IPs Instead of FQDN
+### REMOTE_LISTENER Shows IPs Instead of the SCAN Name
 
 **Symptoms:**
 - `REMOTE_LISTENER` parameter shows IP addresses
-- Was set correctly but reverted to IPs
 
-**Cause**: Oracle RAC automatically converts FQDNs to IPs in some configurations
+**Cause**: Some Oracle RAC configurations show the SCAN addresses instead of the name. `REMOTE_LISTENER` is not in the connector's path in this pattern, so this does not affect connectivity.
 
 **Solution:**
 
-This is expected behavior in some Oracle versions. The key is that services still register correctly. Verify with:
+Nothing to fix as long as services register. Verify with:
 
 ```sql
 -- Check registration is working
@@ -207,7 +217,7 @@ lsnrctl services
 -- Should show services for all nodes
 ```
 
-If services aren't registering, use SCAN explicitly:
+If services aren't registering, set the SCAN name explicitly:
 
 ```sql
 ALTER SYSTEM SET REMOTE_LISTENER='<scan-name>:1521' SCOPE=BOTH SID='*';
@@ -270,18 +280,14 @@ az network nsg rule list \
 - All connections going to one RAC node
 - Other nodes sitting idle
 
-**Cause**: Using round-robin instead of least-connections
+**Cause**: The AppGW balances when a connection is opened. The connector holds long-lived connections, so a node keeps them until they close. A node missing from the pool or failing the probe also leaves all connections on the other.
 
-**Solution:**
+**Check:**
+- Both VIPs are in the pool (not physical IPs)
+- Repeated `sqlplus` connections through the gateway alternate between `instance_name` values
+- Reconnect (restart the connector) to redistribute
 
-```bash
-# Change to least-connections
-az network application-gateway address-pool update \
-  --gateway-name <appgw-name> \
-  --resource-group <rg> \
-  --name <pool-name> \
-  --lb-algorithm LeastConnections
-```
+The AppGW's balancing algorithm is not configurable for TCP pools here, so there is no `--lb-algorithm` setting to change.
 
 ---
 
@@ -424,14 +430,14 @@ CREATE INDEX idx_<table>_<id_column> ON <schema>.<table>(<id_column>);
 
 **Solution:**
 
-See [XSTREAM-SETUP.md](./XSTREAM-SETUP.md) for complete setup, or quick check:
+See [XSTREAM-SETUP.md](../../oracle-rac-xstream/docs/XSTREAM-SETUP.md) for complete setup, or quick check:
 
 ```sql
 -- Check if XStream is configured
 SELECT * FROM DBA_XSTREAM_OUTBOUND;
 
 -- If empty, XStream needs to be configured
--- Requires DBA privileges and XStream license
+-- Requires DBA privileges (see XSTREAM-SETUP.md)
 ```
 
 ### XStream Falling Behind
@@ -552,11 +558,9 @@ ORDER BY inst_id, username;
 ### AppGW Backend Health
 
 ```bash
-# Detailed health status
-az network application-gateway show-backend-health \
-  --name <appgw-name> \
-  --resource-group <rg> \
-  -o json | jq '.backendAddressPools[0].backendHttpSettingsCollection[0].servers'
+# show-backend-health returns nothing for TCP pools. Test through the gateway:
+sqlplus <user>/<password>@//<appgw-private-ip>:1521/<service_name> <<< "SELECT instance_name FROM v\$instance;"
+# Probe traffic shows in each node's listener log as ORA-12537 <unknown connect data> (benign)
 ```
 
 ---
@@ -574,7 +578,7 @@ If you're still experiencing issues:
 
 2. **Check documentation:**
    - [QUICKSTART.md](./QUICKSTART.md)
-   - [HA-TESTING.md](./HA-TESTING.md)
+   - [HA-TESTING-XSTREAM.md](../../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)
    - [APPGW-SETUP.md](./APPGW-SETUP.md)
 
 3. **Oracle resources:**
@@ -590,5 +594,5 @@ If you're still experiencing issues:
 
 - [../README.md](../README.md) - Pattern overview
 - [QUICKSTART.md](./QUICKSTART.md) - Deployment guide
-- [HA-TESTING.md](./HA-TESTING.md) - High availability testing
+- [HA-TESTING-XSTREAM.md](../../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md) - High availability testing
 - [APPGW-SETUP.md](./APPGW-SETUP.md) - Application Gateway configuration

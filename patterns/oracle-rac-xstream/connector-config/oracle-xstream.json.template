@@ -1,0 +1,20 @@
+{
+  "name": "oracle-rac-xstream-source",
+  "connector.class": "OracleXStreamSource",
+  "kafka.auth.mode": "SERVICE_ACCOUNT",
+  "kafka.service.account.id": "<SERVICE_ACCOUNT_ID>",
+  "tasks.max": "1",
+  "database.hostname": "<EGRESS_DNS_NAME>",
+  "database.port": "1521",
+  "database.service.name": "<CDB_SERVICE_ON_ALL_INSTANCES>",
+  "database.dbname": "<CDB_NAME>",
+  "database.pdb.name": "<PDB_NAME>",
+  "database.user": "C##GGADMIN",
+  "database.password": "<XSTREAM_PASSWORD>",
+  "database.out.server.name": "XOUT",
+  "database.processor.licenses": "<NUMBER_OF_PROCESSOR_LICENSES>",
+  "table.include.list": "<SCHEMA>.<TABLE1>,<SCHEMA>.<TABLE2>",
+  "topic.prefix": "<TOPIC_PREFIX>",
+  "output.data.format": "AVRO",
+  "output.key.format": "AVRO"
+}

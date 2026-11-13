@@ -78,11 +78,6 @@ output "client_subnet_id" {
   value       = local.client_subnet_id
 }
 
-output "backup_subnet_id" {
-  description = "OCID of the backup subnet"
-  value       = oci_core_subnet.rac_backup_subnet.id
-}
-
 # Database Home Information
 output "db_home_id" {
   description = "OCID of the database home"

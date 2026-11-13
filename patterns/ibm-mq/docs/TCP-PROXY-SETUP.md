@@ -1,67 +1,12 @@
 # Azure Application Gateway TCP/TLS Proxy Configuration
 
-## 🎉 Native Terraform Support Available (April 2026)
+## Overview
 
-**✅ TCP/TLS proxy is now fully supported in Terraform!**
-
-As of April 2026, the Terraform azurerm provider includes native support for TCP/TLS proxy configuration via the `listener`, `backend_settings`, and `routing_rule` blocks. **No manual configuration is required** for new deployments.
-
-If you're deploying this infrastructure for the first time, simply run:
-```bash
-terraform apply
-```
-
-The Application Gateway will be automatically configured with TCP proxy capabilities.
+Application Gateway v2 can proxy plain TCP and TLS (Layer 4). The Terraform `azurerm` provider supports it through the `listener`, `backend` and `routing_rule` blocks with `protocol = "Tcp"` or `"Tls"` (see the Terraform example in [oracle-rac/docs/APPGW-SETUP.md](../../oracle-rac/docs/APPGW-SETUP.md#22-configure-appgw-backend-pool)). This page shows the same configuration in the Azure Portal, which is useful for adapting an existing gateway.
 
 ---
 
-## Legacy Configuration Options
-
-**Note**: The following manual configuration options are only needed if you have an existing Application Gateway that was deployed before TCP support was added to Terraform, or if you need to configure TCP proxy outside of Terraform.
-
----
-
-## Option 1: Migrate Existing Deployment to Terraform (Recommended)
-
-If you have an existing Application Gateway that was manually configured for TCP:
-
-1. Update your Terraform code to use the new TCP blocks (see main.tf)
-2. Remove any lifecycle ignore_changes blocks
-3. Run `terraform plan` to review changes
-4. Run `terraform apply` to bring infrastructure under full Terraform management
-
----
-
-## Option 2: Automated Configuration (PowerShell - Legacy)
-
-Use the provided PowerShell script to automatically configure TCP proxy:
-
-```powershell
-.\scripts\configure-tcp-proxy.ps1 -ResourceGroup <name> -AppGatewayName <name>
-```
-
-**Example:**
-```powershell
-.\scripts\configure-tcp-proxy.ps1 -ResourceGroup vpc-peered-cce-se -AppGatewayName confluent-pl-appgw
-```
-
-**What it does:**
-- ✓ Creates TCP listener on port 1414
-- ✓ Configures TCP backend settings
-- ✓ Updates health probe to use TCP protocol
-- ✓ Creates TCP routing rule
-- ✓ Removes old HTTP components
-
-**Prerequisites:**
-- PowerShell with Az module installed: `Install-Module -Name Az -AllowClobber -Scope CurrentUser`
-- Azure authentication: `Connect-AzAccount`
-- Contributor access to the resource group
-
-**Estimated time:** 15-20 minutes (includes 3 Application Gateway updates)
-
----
-
-## Option 2: Azure Portal Configuration (Manual)
+## Configure in the Azure Portal
 
 **Estimated time:** 20-30 minutes
 
@@ -77,7 +22,7 @@ The Azure Portal doesn't have a single button to convert HTTP to TCP. You'll nee
 #### Step 1: Create TCP Listener
 
 1. Open [Azure Portal](https://portal.azure.com)
-2. Navigate to: **Resource Groups** → `vpc-peered-cce-se` → `confluent-pl-appgw`
+2. Navigate to: **Resource Groups** → `my-resource-group` → `confluent-pl-appgw`
 3. Wait for the Application Gateway status to show **Succeeded** (top of page)
 4. In the left menu, select **Listeners**
 5. Click **+ Add listener**
@@ -202,14 +147,14 @@ IBM MQ Backend Server (configured in backend pool)
 **⚠️ CRITICAL STEP**: The IBM MQ server must allow connections from the Application Gateway subnet, this also includes firewalls in the path.
 
 **Application Gateway Subnet**: Check your `appgw_subnet_prefix` in `terraform.tfvars`
-- Default: `172.200.9.0/24`
+- Default: `172.16.9.0/24`
 - Example custom: `10.0.1.0/24`
 
 #### Linux/Unix Firewall (iptables) if enabled
 
 ```bash
 # Allow TCP 1414 from Application Gateway subnet
-sudo iptables -A INPUT -p tcp --dport 1414 -s 172.200.9.0/24 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 1414 -s 172.16.9.0/24 -j ACCEPT
 sudo iptables -L -n -v | grep 1414
 
 # Make persistent (Ubuntu/Debian)
@@ -223,7 +168,7 @@ sudo service iptables save
 
 ```bash
 # Create rich rule for Application Gateway subnet
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.200.9.0/24" port protocol="tcp" port="1414" accept'
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="172.16.9.0/24" port protocol="tcp" port="1414" accept'
 sudo firewall-cmd --reload
 sudo firewall-cmd --list-all
 ```
@@ -236,7 +181,7 @@ New-NetFirewallRule -DisplayName "IBM MQ - App Gateway" `
   -Direction Inbound `
   -Protocol TCP `
   -LocalPort 1414 `
-  -RemoteAddress 172.200.9.0/24 `
+  -RemoteAddress 172.16.9.0/24 `
   -Action Allow
 
 # Verify the rule
@@ -252,7 +197,7 @@ IBM MQ requires channel authentication rules to allow connections from the Appli
 ```bash
 # Allow connections from App Gateway subnet and map to 'confluent' user
 runmqsc QM1 << EOF
-SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
+SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.16.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
 EOF
 ```
 
@@ -263,13 +208,13 @@ EOF
 ```bash
 # Allow connections from App Gateway subnet
 runmqsc QM1 << EOF
-SET CHLAUTH('DEV.APP.SVRCONN') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(CHANNEL) CHCKCLNT(OPTIONAL)
+SET CHLAUTH('DEV.APP.SVRCONN') TYPE(ADDRESSMAP) ADDRESS('172.16.*') USERSRC(CHANNEL) CHCKCLNT(OPTIONAL)
 EOF
 ```
 
 **Explanation:**
 - `TYPE(ADDRESSMAP)` - Map specific IP addresses to user identities
-- `ADDRESS('172.200.*')` - Allow from entire 172.200.0.0/16 range (adjust to match your subnet)
+- `ADDRESS('172.16.*')` - Allow from entire 172.16.0.0/16 range (adjust to match your subnet)
 - `USERSRC(MAP)` - Use mapped user from MCAUSER
 - `MCAUSER('confluent')` - Run connections as this MQ user (must exist)
 - `USERSRC(CHANNEL)` - Use the user ID from the channel definition (for DEV channel)
@@ -381,7 +326,7 @@ az network nsg rule create \
   --nsg-name <mq-nsg> \
   --name AllowAppGatewayToMQ \
   --priority 100 \
-  --source-address-prefixes 172.200.9.0/24 \
+  --source-address-prefixes 172.16.9.0/24 \
   --destination-port-ranges 1414 \
   --protocol Tcp \
   --access Allow \
@@ -408,7 +353,7 @@ Check status:
 ```bash
 az network private-endpoint-connection list \
   --name confluent-pl-appgw \
-  --resource-group vpc-peered-cce-se \
+  --resource-group my-resource-group \
   --type Microsoft.Network/applicationGateways \
   -o table
 ```
@@ -417,7 +362,7 @@ If pending, approve it:
 ```bash
 az network private-endpoint-connection approve \
   --name <connection-name> \
-  --resource-group vpc-peered-cce-se \
+  --resource-group my-resource-group \
   --resource-name confluent-pl-appgw \
   --type Microsoft.Network/applicationGateways \
   --description "Approved for Confluent Cloud egress"
@@ -443,7 +388,7 @@ Check Application Gateway backend health:
 ```bash
 az network application-gateway show-backend-health \
   --name confluent-pl-appgw \
-  --resource-group vpc-peered-cce-se \
+  --resource-group my-resource-group \
   --query "backendAddressPools[0].backendHttpSettingsCollection[0].servers[0].health" \
   -o tsv
 ```
@@ -486,7 +431,7 @@ cp ibm-mq-source.env.example ibm-mq-source.env
 
 2. **Check Application Gateway can reach IBM MQ**
    ```bash
-   # From a VM in the App Gateway subnet (172.200.9.0/24)
+   # From a VM in the App Gateway subnet (172.16.9.0/24)
    nc -zv <mq-ip> 1414
    telnet <mq-ip> 1414
    ```
@@ -527,7 +472,7 @@ cp ibm-mq-source.env.example ibm-mq-source.env
    # CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('*') ACTION(BLOCK)
 
    # You must add an ALLOW rule for your App Gateway subnet:
-   SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.200.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
+   SET CHLAUTH('CONFLUENT.CHL') TYPE(ADDRESSMAP) ADDRESS('172.16.*') USERSRC(MAP) MCAUSER('confluent') ACTION(ADD)
    ```
 
 ### Connection Times Out
@@ -537,7 +482,7 @@ cp ibm-mq-source.env.example ibm-mq-source.env
    ```bash
    az network private-endpoint-connection show \
      --name <connection-name> \
-     --resource-group vpc-peered-cce-se \
+     --resource-group my-resource-group \
      --resource-name confluent-pl-appgw \
      --type Microsoft.Network/applicationGateways \
      --query "privateLinkServiceConnectionState.status" -o tsv
@@ -548,7 +493,7 @@ cp ibm-mq-source.env.example ibm-mq-source.env
    ```bash
    az network application-gateway show \
      --name confluent-pl-appgw \
-     --resource-group vpc-peered-cce-se \
+     --resource-group my-resource-group \
      --query "provisioningState" -o tsv
    ```
    Expected: `Succeeded`
@@ -570,7 +515,7 @@ cp ibm-mq-source.env.example ibm-mq-source.env
 3. **Check DNS resolution** (if using DNS record)
    ```bash
    # From Confluent Cloud connector logs
-   nslookup ibmmq2.peter.com
+   nslookup ibmmq.example.com
    ```
 
 4. **Verify MQ channel is running**

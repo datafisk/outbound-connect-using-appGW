@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    confluent = {
+      source  = "confluentinc/confluent"
+      version = ">= 2.0"
+    }
+  }
+}
+
 # Oracle JDBC Source Connector for RAC
 # Deploys Confluent Cloud Oracle Database Source Connector to ingest data from Oracle RAC
 
@@ -57,10 +66,6 @@ resource "confluent_connector" "oracle_rac_source" {
     "output.data.format" = var.oracle_output_data_format
     "output.key.format"  = var.oracle_output_key_format
   }
-
-  depends_on = [
-    azurerm_application_gateway.peter_g_mqtt_update
-  ]
 
   lifecycle {
     prevent_destroy = false

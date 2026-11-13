@@ -1,0 +1,23 @@
+{
+  "name": "oracle-rac-jdbc-source",
+  "connector.class": "OracleDatabaseSource",
+  "kafka.auth.mode": "SERVICE_ACCOUNT",
+  "kafka.service.account.id": "<SERVICE_ACCOUNT_ID>",
+  "tasks.max": "1",
+  "connection.host": "<EGRESS_DNS_NAME>",
+  "connection.port": "1521",
+  "connection.user": "<JDBC_USER>",
+  "connection.password": "<JDBC_USER_PASSWORD>",
+  "db.connection.type": "SERVICE_NAME",
+  "db.name": "<PDB_SERVICE_NAME_ON_ALL_INSTANCES>",
+  "db.timezone": "UTC",
+  "ssl.mode": "disabled",
+  "table.types": "TABLE",
+  "query": "SELECT CAST(<ID_COLUMN> AS NUMBER(18,0)) AS <ID_COLUMN>, <OTHER_COLUMNS> FROM <SCHEMA>.<TABLE>",
+  "mode": "incrementing",
+  "incrementing.column.name": "<ID_COLUMN>",
+  "poll.interval.ms": "5000",
+  "batch.max.rows": "1000",
+  "topic.prefix": "<TOPIC_NAME>",
+  "output.data.format": "JSON_SR"
+}

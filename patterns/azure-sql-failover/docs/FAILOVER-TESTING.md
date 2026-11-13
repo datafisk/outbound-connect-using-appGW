@@ -15,7 +15,7 @@ Options, trade-offs and test procedures for connecting Confluent Cloud connector
 
 ## Design & Challenge
 
-SQL instances deployed in separate regions (useast & uswest2 in our testing) are mapped into the same failover group with a shared FQDN (`peter-fog`). Azure updates that FQDN with CNAME records at failover, pointing at whichever regional server is primary. Cross-region connectivity is implied: either the databases have public endpoints, or private endpoints that are reachable cross region.
+SQL instances deployed in separate regions (useast & uswest2 in our testing) are mapped into the same failover group with a shared FQDN (`my-fog`). Azure updates that FQDN with CNAME records at failover, pointing at whichever regional server is primary. Cross-region connectivity is implied: either the databases have public endpoints, or private endpoints that are reachable cross region.
 
 This is a problem for Confluent Cloud connectors because:
 
@@ -54,7 +54,7 @@ Dual Confluent Cloud EAPs, one direct to each Azure SQL environment, with CNAME 
 - The failover group FQDN is resolved against public DNS; the CNAME chain is followed until it reaches a regional name that matches a Confluent egress DNS entry, which routes to the right EAP.
 - No manual DNS updates at failover.
 - Some customers may have concerns about relying on public DNS.
-- Cheaper than AppGW, but doubles the EAP footprint against cluster quotas.
+- Needs no AppGW, but doubles the EAP footprint against cluster quotas.
 
 Setup: [../egress-access-points/dual-eap/](../egress-access-points/dual-eap/)
 
@@ -63,10 +63,10 @@ Setup: [../egress-access-points/dual-eap/](../egress-access-points/dual-eap/)
 A reusable Confluent Cloud EAP to an Application Gateway, to customer-hosted Private Link endpoints for the SQL servers in both regions.
 
 - Aligns with the recommended Azure design for failover groups with private endpoints; the Confluent-specific part is only EAP → AppGW.
-- Single endpoint for the SQL connector (`peter-fog.database.windows.net`).
+- Single endpoint for the SQL connector (`my-fog.database.windows.net`).
 - AppGW routes to the correct primary based on DNS-driven health probes and chases the Azure-managed CNAME chains.
 - No manual DNS updates at failover.
-- Slightly higher cost, but scales well when several Azure SQL setups are in scope (listener ports can be cycled on the same AppGW).
+- Scales well when several Azure SQL setups are in scope (listener ports can be cycled on the same AppGW).
 - The EAP and AppGW can be reused by other services and connectors.
 
 Setup: [../egress-access-points/appgw/](../egress-access-points/appgw/)
@@ -90,7 +90,7 @@ These are the configurations customers commonly try first. They do not give auto
 
 ### Single EAP with the failover group FQDN as an egress DNS entry
 
-- Egress DNS entry `peter-fog.database.windows.net` → EAP in one region.
+- Egress DNS entry `my-fog.database.windows.net` → EAP in one region.
 - At failover the entry still points at the old region; it must be updated manually, and the connector is down until it is.
 - The single EAP is a single point of failure for the connector.
 - You cannot add a second EAP under the same DNS name to cover the other region.
@@ -117,9 +117,9 @@ These are the configurations customers commonly try first. They do not give auto
 
 ```bash
 az sql failover-group show \
-  --name peter-fog \
-  --resource-group petergustafss-test \
-  --server pg-uswest2 \
+  --name my-fog \
+  --resource-group my-resource-group \
+  --server sql-primary-westus2 \
   --query '{primary:replicationRole,secondary:partnerServers[0].replicationRole}'
 ```
 
@@ -128,14 +128,14 @@ az sql failover-group show \
 ```bash
 # Check West US 2 Private Endpoint
 az network private-endpoint show \
-  --name pg-uswest2-pe \
-  --resource-group petergustafss-test \
+  --name sql-primary-westus2-pe \
+  --resource-group my-resource-group \
   --query 'privateLinkServiceConnections[0].privateLinkServiceConnectionState.status'
 
 # Check East US Private Endpoint
 az network private-endpoint show \
-  --name pg-useast-pe \
-  --resource-group petergustafss-test \
+  --name sql-secondary-eastus-pe \
+  --resource-group my-resource-group \
   --query 'privateLinkServiceConnections[0].privateLinkServiceConnectionState.status'
 ```
 
@@ -143,8 +143,8 @@ az network private-endpoint show \
 
 ```bash
 confluent connect cluster list \
-  --environment t36181 \
-  --cluster lkc-mqj017 | grep "fog-failvoer-test"
+  --environment <env-id> \
+  --cluster <cluster-id> | grep "<connector-name>"
 ```
 
 ### Test 1: Data Flow to Primary Region
@@ -156,9 +156,9 @@ confluent connect cluster list \
 1. Check current primary:
 ```bash
 az sql failover-group show \
-  --name peter-fog \
-  --resource-group petergustafss-test \
-  --server pg-uswest2 \
+  --name my-fog \
+  --resource-group my-resource-group \
+  --server sql-primary-westus2 \
   --query '{primary:partnerServers[0].replicationRole}'
 ```
 
@@ -179,9 +179,9 @@ SELECT TOP 5 * FROM [dbo].[test-orders] ORDER BY order_id DESC;
 
 4. Verify connector status:
 ```bash
-confluent connect cluster describe lcc-nv5y8ok \
-  --environment t36181 \
-  --cluster lkc-mqj017
+confluent connect cluster describe <connector-id> \
+  --environment <env-id> \
+  --cluster <cluster-id>
 ```
 
 **Expected Results:**
@@ -199,9 +199,9 @@ confluent connect cluster describe lcc-nv5y8ok \
 ```bash
 # Current primary
 CURRENT_PRIMARY=$(az sql failover-group show \
-  --name peter-fog \
-  --resource-group petergustafss-test \
-  --server pg-uswest2 \
+  --name my-fog \
+  --resource-group my-resource-group \
+  --server sql-primary-westus2 \
   --query 'replicationRole' -o tsv)
 
 echo "Current primary: $CURRENT_PRIMARY"
@@ -215,9 +215,9 @@ SELECT COUNT(*) as count_before_failover FROM [dbo].[test-orders];
 ```bash
 # If current primary is West US 2, failover to East US
 az sql failover-group set-primary \
-  --name peter-fog \
-  --resource-group petergustafss-test \
-  --server pg-useast
+  --name my-fog \
+  --resource-group my-resource-group \
+  --server sql-secondary-eastus
 
 # Wait 30-60 seconds for failover to complete
 sleep 60
@@ -226,17 +226,17 @@ sleep 60
 3. Verify new primary:
 ```bash
 az sql failover-group show \
-  --name peter-fog \
-  --resource-group petergustafss-test \
-  --server pg-uswest2 \
+  --name my-fog \
+  --resource-group my-resource-group \
+  --server sql-primary-westus2 \
   --query '{primary:partnerServers[0].replicationRole,replicationState:replicationState}'
 ```
 
 4. **CRITICAL**: Check connector status during/after failover:
 ```bash
-confluent connect cluster describe lcc-nv5y8ok \
-  --environment t36181 \
-  --cluster lkc-mqj017 | grep Status
+confluent connect cluster describe <connector-id> \
+  --environment <env-id> \
+  --cluster <cluster-id> | grep Status
 ```
 
 5. Produce new test messages (3-5 messages):
@@ -278,18 +278,18 @@ SELECT COUNT(*) FROM [dbo].[test-orders];
 ```bash
 # Failback to original primary (West US 2)
 az sql failover-group set-primary \
-  --name peter-fog \
-  --resource-group petergustafss-test \
-  --server pg-uswest2
+  --name my-fog \
+  --resource-group my-resource-group \
+  --server sql-primary-westus2
 
 sleep 60
 ```
 
 2. Verify connector remained healthy:
 ```bash
-confluent connect cluster describe lcc-nv5y8ok \
-  --environment t36181 \
-  --cluster lkc-mqj017
+confluent connect cluster describe <connector-id> \
+  --environment <env-id> \
+  --cluster <cluster-id>
 ```
 
 3. Produce test messages and verify they appear in West US 2
@@ -321,7 +321,7 @@ ORDER BY connect_time DESC;
 ```
 
 **Expected Results:**
-- `client_net_address` should be **172.200.12.x** (Private Endpoint IP)
+- `client_net_address` should be **172.16.12.x** (Private Endpoint IP)
 - If showing public IP, traffic is NOT using Private Link
 
 **Method 2: Disable Public Access**
@@ -329,13 +329,13 @@ ORDER BY connect_time DESC;
 ```bash
 # Disable public network access on both servers
 az sql server update \
-  --name pg-uswest2 \
-  --resource-group petergustafss-test \
+  --name sql-primary-westus2 \
+  --resource-group my-resource-group \
   --set publicNetworkAccess=Disabled
 
 az sql server update \
-  --name pg-useast \
-  --resource-group petergustafss-test \
+  --name sql-secondary-eastus \
+  --resource-group my-resource-group \
   --set publicNetworkAccess=Disabled
 ```
 
@@ -347,7 +347,7 @@ az sql server update \
 
 ## Test Results Summary
 
-Tested with failover group `peter-fog` (`pg-uswest2` West US 2, `pg-useast` East US), connector `lcc-nv5y8ok` (MicrosoftSqlServerSink, topic `test-orders`, AVRO, auto-create).
+Tested with failover group `my-fog` (`sql-primary-westus2` West US 2, `sql-secondary-eastus` East US), connector `<connector-id>` (MicrosoftSqlServerSink, topic `test-orders`, AVRO, auto-create).
 
 | Option | Result |
 |--------|--------|
@@ -415,9 +415,9 @@ Not yet re-run cleanly: a controlled Option 1 / Option 2 test and a measured fai
 
 ```bash
 az sql failover-group show \
-  --name peter-fog \
-  --resource-group petergustafss-test \
-  --server pg-uswest2 \
+  --name my-fog \
+  --resource-group my-resource-group \
+  --server sql-primary-westus2 \
   --query replicationState
 ```
 
@@ -431,9 +431,7 @@ States:
 ## Related Documentation
 
 - [../README.md](../README.md) - Pattern overview
-- [../COST-ANALYSIS.md](../COST-ANALYSIS.md) - Cost breakdown
-- [QUICKSTART.md](./QUICKSTART.md) - Step-by-step deployment guide
-- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Common issues
+- [Pattern README](../README.md) - Setup steps for each connectivity option
 
 ---
 

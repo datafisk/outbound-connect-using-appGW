@@ -29,7 +29,6 @@ A pattern should be added to this repository if it meets the following criteria:
 
 ### Nice to Have
 
-- Cost analysis and optimization strategies
 - Multiple deployment approaches (with pros/cons)
 - Troubleshooting guide with common issues
 - Automated deployment scripts
@@ -63,7 +62,6 @@ Every pattern must include:
 patterns/your-pattern-name/
 ├── README.md                      # Overview with TL;DR
 ├── ARCHITECTURE.md                # Technical architecture (optional but recommended)
-├── COST-ANALYSIS.md               # Cost breakdown (optional but recommended)
 ├── terraform/
 │   ├── main.tf
 │   ├── variables.tf
@@ -119,10 +117,6 @@ The pattern README.md should include:
 ## Documentation
 
 [Links to detailed docs]
-
-## Cost Analysis
-
-[Link to COST-ANALYSIS.md or inline summary]
 
 ## Key Learnings
 
@@ -217,15 +211,6 @@ Include:
 - Security considerations
 - HA/failover mechanics
 
-### COST-ANALYSIS.md (Recommended)
-
-Provide:
-- Component-level cost breakdown
-- Monthly cost estimates
-- Cost comparison (if multiple approaches)
-- Optimization strategies
-- ROI analysis
-
 ### docs/QUICKSTART.md
 
 Step-by-step deployment guide:
@@ -290,7 +275,6 @@ Before submitting, verify:
 - [ ] terraform.tfvars.example has no secrets
 - [ ] Scripts are executable (`chmod +x`)
 - [ ] Links in documentation work correctly
-- [ ] Cost analysis is accurate (if included)
 
 ### 3. Pull Request
 
@@ -311,7 +295,6 @@ Before submitting, verify:
      - What the pattern does
      - Why it's useful
      - Testing performed
-     - Cost estimate
 
 4. PR template:
    ```markdown
@@ -325,13 +308,10 @@ Before submitting, verify:
    - [ ] Deployed from scratch successfully
    - [ ] Connector working
    - [ ] Documentation reviewed
-   - [ ] Cost analysis accurate
 
    ## Screenshots/Diagrams
    [Architecture diagram, if applicable]
 
-   ## Cost Estimate
-   [Monthly cost range]
    ```
 
 ### 4. Review Process
@@ -340,7 +320,6 @@ Maintainers will review:
 - Completeness of documentation
 - Code quality and conventions
 - Testing thoroughness
-- Cost accuracy
 - Reusability and value
 
 ### 5. Approval and Merge

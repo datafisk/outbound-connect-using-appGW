@@ -1,26 +1,26 @@
 # Azure SQL Failover Group Configuration
 
 # Resource Group
-resource_group_name = "petergustafss-test"
+resource_group_name = "my-resource-group"
 location_primary    = "westus2"
 location_secondary  = "eastus"
 
 # SQL Server Configuration
-sql_server_primary_name   = "pg-uswest2"
-sql_server_secondary_name = "pg-useast"
+sql_server_primary_name   = "sql-primary-westus2"
+sql_server_secondary_name = "sql-secondary-eastus"
 sql_admin_username        = "confluent"
 sql_admin_password        = "YourSecurePassword123!@#"  # Change this!
 
 # Database Configuration
-database_name = "peter-test-db"
+database_name = "my-test-db"
 database_sku  = "GP_S_Gen5_2"  # Serverless Gen5, 2 vCores
 
 # Failover Group
-failover_group_name = "peter-fog"
+failover_group_name = "my-fog"
 
 # Networking
-vnet_resource_group = "vpc-peered-cce-se"
-vnet_name           = "vpc-peered-cce-se-vnet"
+vnet_resource_group = "my-resource-group"
+vnet_name           = "my-vnet"
 subnet_name         = "sql-private-endpoint-subnet"
 
 # Private DNS Zone

@@ -7,13 +7,13 @@ Azure SQL failover groups rely on CNAME DNS updates, but Confluent Cloud private
 1. **Unrestricted public access**: public SQL endpoints, no firewall whitelisting, Service Endpoints carry the traffic.
 2. **Restricted public access**: public endpoints with the firewall and "Allow Azure Services" enabled.
 3. **Private networking with public DNS**: one EAP per region, regional names in Confluent egress DNS, CNAMEs resolved via public DNS.
-4. **Full private networking**: one reusable EAP to an Application Gateway, to Private Link endpoints in both regions (~$150-180/month for AppGW).
+4. **Full private networking**: one reusable EAP to an Application Gateway, to Private Link endpoints in both regions.
 
 Choose based on security requirements and how many SQL setups you need to cover.
 
 ## The Challenge
 
-SQL instances in separate regions share a failover group FQDN (`peter-fog.database.windows.net` in our testing). Azure rewrites CNAME records at failover to point at the current primary.
+SQL instances in separate regions share a failover group FQDN (`my-fog.database.windows.net` in our testing). Azure rewrites CNAME records at failover to point at the current primary.
 
 - Confluent Cloud private DNS does not host CNAMEs, so the failover group FQDN must resolve over the Internet.
 - Existing guidance doesn't cover this service or private networking setups, so customers try several configurations and most fail.
@@ -29,7 +29,7 @@ See [docs/FAILOVER-TESTING.md](./docs/FAILOVER-TESTING.md) for the full option w
 | Private path | No | No | Yes | Yes |
 | Public DNS dependency | Yes | Yes | Yes | No |
 | EAPs | 0 | 0 | 2 | 1 (reusable) |
-| Extra cost | none | none | 2nd EAP, 2 PEs | AppGW ~$150-180/mo |
+| Extra components | none | none | 2nd EAP, 2 PEs | AppGW |
 | Failover | Automatic | Automatic | Automatic | Automatic |
 
 Key caveats:
@@ -80,14 +80,9 @@ Full procedures: [docs/FAILOVER-TESTING.md](./docs/FAILOVER-TESTING.md).
 - Azure subscription, Azure CLI and Confluent CLI authenticated
 - Terraform >= 1.0 (SQL infrastructure example)
 
-## Cost
-
-SQL compute is the same across all options and dominates the bill. The options differ only in connectivity cost. See [COST-ANALYSIS.md](./COST-ANALYSIS.md). Confluent-side EAP charges are not included in those figures; check current Confluent pricing for your cluster type.
-
 ## Documentation
 
 - [docs/FAILOVER-TESTING.md](./docs/FAILOVER-TESTING.md): options, non-working configs, test procedures
-- [COST-ANALYSIS.md](./COST-ANALYSIS.md): cost breakdown
 - [egress-access-points/dual-eap/](./egress-access-points/dual-eap/): Option 3
 - [egress-access-points/appgw/](./egress-access-points/appgw/): Option 4
 

@@ -9,48 +9,36 @@ This Terraform module deploys a 2-node Oracle Real Application Clusters (RAC) da
 - ✅ **ASM Storage** - Automatic Storage Management for shared storage
 - ✅ **Automated Deployment** - Complete setup in 60-120 minutes
 - ✅ **XStream CDC Ready** - Pre-configured for Confluent Oracle CDC connector
-- ✅ **Cost Effective** - ~$435-800/month depending on license model
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ OCI Virtual Cloud Network (VCN)                            │
+│  (new, or an existing one with a DRG/VPN towards Azure)     │
 │                                                              │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐│
-│  │ Client Subnet            │  │ Backup Subnet            ││
-│  │ 10.0.1.0/24              │  │ 10.0.2.0/24              ││
-│  │                          │  │                          ││
-│  │  ┌───────────────────┐   │  │  ┌───────────────────┐  ││
-│  │  │ RAC Node 1        │   │  │  │ Backup NIC        │  ││
-│  │  │ - Public IP       │   │  │  │                   │  ││
-│  │  │ - Private IP      │   │  │  │                   │  ││
-│  │  │ - VIP             │   │  │  │                   │  ││
-│  │  └───────────────────┘   │  │  └───────────────────┘  ││
-│  │                          │  │                          ││
-│  │  ┌───────────────────┐   │  │  ┌───────────────────┐  ││
-│  │  │ RAC Node 2        │   │  │  │ Backup NIC        │  ││
-│  │  │ - Public IP       │   │  │  │                   │  ││
-│  │  │ - Private IP      │   │  │  │                   │  ││
-│  │  │ - VIP             │   │  │  │                   │  ││
-│  │  └───────────────────┘   │  │  └───────────────────┘  ││
-│  │                          │  │                          ││
-│  │  ┌───────────────────┐   │  │                          ││
-│  │  │ SCAN IP (x3)      │   │  │                          ││
-│  │  │ - Load balances   │   │  │                          ││
-│  │  │   connections     │   │  │                          ││
-│  │  └───────────────────┘   │  │                          ││
-│  └──────────────────────────┘  └──────────────────────────┘│
+│  ┌────────────────────────────────────────────────────┐     │
+│  │ Client Subnet (new, or existing, e.g. 10.0.1.0/24) │     │
+│  │                                                      │     │
+│  │  ┌───────────────────┐   ┌───────────────────┐      │     │
+│  │  │ RAC Node 1        │   │ RAC Node 2        │      │     │
+│  │  │ - Private IP      │   │ - Private IP      │      │     │
+│  │  │ - VIP             │   │ - VIP             │      │     │
+│  │  └───────────────────┘   └───────────────────┘      │     │
+│  │                                                      │     │
+│  │  ┌────────────────────────────────────────────┐     │     │
+│  │  │ SCAN IPs (x3), load balance connections    │     │     │
+│  │  └────────────────────────────────────────────┘     │     │
+│  └────────────────────────────────────────────────────┘     │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ Shared ASM Storage                                   │   │
-│  │ - OCR (Oracle Cluster Registry)                      │   │
-│  │ - Voting Disks                                       │   │
-│  │ - DATA Disk Group                                    │   │
-│  │ - RECO Disk Group (backups)                          │   │
+│  │ Shared ASM Storage (OCR, voting disks, DATA, RECO)   │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+VM shapes use a single client subnet. A separate backup subnet is only supported for bare metal and Exadata shapes, so this module does not create one.
+
 
 ## Prerequisites
 
@@ -144,7 +132,7 @@ srvctl status database -d RACDB
 | pdb_name | PDB name | string | "PDB1" | no |
 | license_model | LICENSE_INCLUDED or BYOL | string | "BRING_YOUR_OWN_LICENSE" | no |
 
-See [variables.tf](variables.tf) for complete list.
+See [variables.tf](./variables.tf) for complete list.
 
 ## Module Outputs
 
@@ -155,21 +143,6 @@ See [variables.tf](variables.tf) for complete list.
 | database_connection_string | Full connection string |
 | deployment_summary | Summary of deployment |
 | next_steps | Instructions for next steps |
-
-## Cost Estimation
-
-Based on default configuration (VM.Standard2.4, 512 GB storage, BYOL):
-
-| Component | Monthly Cost |
-|-----------|--------------|
-| Compute (2 nodes) | ~$350 |
-| Storage (512 GB) | ~$50 |
-| Backups (7 days) | ~$25 |
-| Network | ~$10 |
-| **Total (BYOL)** | **~$435** |
-| **Total (License Included)** | **~$800** |
-
-Costs vary by region and configuration. Check [OCI Pricing](https://www.oracle.com/cloud/price-list.html).
 
 ## Cleanup
 
@@ -212,7 +185,7 @@ oci limits value list --compartment-id <tenancy-ocid> --service-name compute
 - [OCI Database Service Documentation](https://docs.oracle.com/en-us/iaas/Content/Database/home.htm)
 - [OCI Terraform Provider](https://registry.terraform.io/providers/oracle/oci/latest/docs)
 - [Oracle RAC on OCI Best Practices](https://docs.oracle.com/en/solutions/deploy-oracle-db-rac-oci/)
-- [XStream CDC Configuration Guide](../OCI-GETTING-STARTED.md#step-5-configure-xstream-cdc)
+- [XStream CDC Configuration Guide](../../../oracle-rac-xstream/docs/XSTREAM-SETUP.md#xstream-on-oracle-rac)
 
 ## License
 
