@@ -11,7 +11,7 @@
 # user_ocid        = "ocid1.user.oc1..aaaaaaaa..."
 # fingerprint      = "xx:xx:xx:xx:..."
 # private_key_path = "~/.oci/oci_api_key.pem"
-# region           = "us-ashburn-1"
+# region           = "us-phoenix-1"
 
 # ==============================================================================
 # Resource Configuration - REQUIRED
@@ -28,10 +28,17 @@ availability_domain = "AD-1"
 # Network Configuration
 # ==============================================================================
 
-# VCN and Subnet CIDRs
+# Option A: create a new VCN and client subnet
 vcn_cidr            = "10.0.0.0/16"
 client_subnet_cidr  = "10.0.1.0/24"
-backup_subnet_cidr  = "10.0.2.0/24"
+
+# Option B: reuse an existing VCN and subnet (e.g. one already connected to Azure via a DRG/VPN).
+# The subnet needs a route to your Azure VNet through the DRG, and a security list that allows
+# TCP 1521 from the Azure Application Gateway subnet. No backup subnet is needed for VM shapes.
+# use_existing_vcn           = true
+# existing_vcn_id            = "ocid1.vcn.oc1..."
+# use_existing_client_subnet = true
+# existing_client_subnet_id  = "ocid1.subnet.oc1..."
 
 # ==============================================================================
 # RAC Cluster Configuration
@@ -81,10 +88,8 @@ db_edition = "ENTERPRISE_EDITION_EXTREME_PERFORMANCE"
 # ==============================================================================
 
 # Database admin password (SYS and SYSTEM users)
-# Requirements:
-#   - 9-30 characters
-#   - Must include uppercase, lowercase, and numbers
-#   - No special chars like @ # $ % (causes connection issues)
+# Requirements (OCI): 9-30 characters, at least 2 uppercase, 2 lowercase, 2 digits and
+# 2 special characters from _ # -. Do not commit this file (*.tfvars is gitignored).
 db_admin_password = "YourStrongPassword123"
 
 # Database name (max 8 characters, starts with letter)
@@ -95,9 +100,9 @@ pdb_name = "XSTREAMPDB"
 
 # Oracle Database version
 # Available versions (check with: oci db version list --compartment-id <id>)
-#   19.21.0.0 - Oracle 19c (recommended for XStream CDC)
-#   21.10.0.0 - Oracle 21c
-db_version = "19.21.0.0"
+#   19.0.0.0  - latest Oracle 19c release update (recommended for XStream CDC)
+#   Check what is offered: oci db version list --compartment-id <id> --db-system-shape <shape>
+db_version = "19.0.0.0"
 
 # Database workload type
 # Options: "OLTP" (transactional) or "DSS" (data warehouse)

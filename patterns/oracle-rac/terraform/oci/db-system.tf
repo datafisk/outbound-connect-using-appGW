@@ -73,6 +73,7 @@ resource "oci_database_db_system" "rac_db_system" {
   # Lifecycle - prevent accidental deletion
   lifecycle {
     ignore_changes = [
+      cpu_core_count,                       # OCI reports the total over both nodes (e.g. 8 for 2 x 4), which would otherwise plan a scale-down
       db_home[0].database[0].admin_password # Don't update password on every apply
     ]
   }

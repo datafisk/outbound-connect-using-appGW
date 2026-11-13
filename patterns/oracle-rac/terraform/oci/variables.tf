@@ -89,12 +89,6 @@ variable "client_subnet_cidr" {
   default     = "10.0.1.0/24"
 }
 
-variable "backup_subnet_cidr" {
-  description = "CIDR block for backup subnet"
-  type        = string
-  default     = "10.0.2.0/24"
-}
-
 # RAC Cluster Configuration
 variable "cluster_name" {
   description = "Name of the RAC cluster"
@@ -205,9 +199,9 @@ variable "pdb_name" {
 }
 
 variable "db_version" {
-  description = "Oracle Database version (e.g., '19.21.0.0', '21.10.0.0')"
+  description = "Oracle Database version. Use 'oci db version list --compartment-id <id> --db-system-shape <shape>' to see what is offered; '19.0.0.0' selects the latest 19c release update"
   type        = string
-  default     = "19.21.0.0"
+  default     = "19.0.0.0"
 }
 
 variable "db_workload" {

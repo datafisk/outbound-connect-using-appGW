@@ -16,41 +16,30 @@ This Terraform module deploys a 2-node Oracle Real Application Clusters (RAC) da
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ OCI Virtual Cloud Network (VCN)                            │
+│  (new, or an existing one with a DRG/VPN towards Azure)     │
 │                                                              │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐│
-│  │ Client Subnet            │  │ Backup Subnet            ││
-│  │ 10.0.1.0/24              │  │ 10.0.2.0/24              ││
-│  │                          │  │                          ││
-│  │  ┌───────────────────┐   │  │  ┌───────────────────┐  ││
-│  │  │ RAC Node 1        │   │  │  │ Backup NIC        │  ││
-│  │  │ - Public IP       │   │  │  │                   │  ││
-│  │  │ - Private IP      │   │  │  │                   │  ││
-│  │  │ - VIP             │   │  │  │                   │  ││
-│  │  └───────────────────┘   │  │  └───────────────────┘  ││
-│  │                          │  │                          ││
-│  │  ┌───────────────────┐   │  │  ┌───────────────────┐  ││
-│  │  │ RAC Node 2        │   │  │  │ Backup NIC        │  ││
-│  │  │ - Public IP       │   │  │  │                   │  ││
-│  │  │ - Private IP      │   │  │  │                   │  ││
-│  │  │ - VIP             │   │  │  │                   │  ││
-│  │  └───────────────────┘   │  │  └───────────────────┘  ││
-│  │                          │  │                          ││
-│  │  ┌───────────────────┐   │  │                          ││
-│  │  │ SCAN IP (x3)      │   │  │                          ││
-│  │  │ - Load balances   │   │  │                          ││
-│  │  │   connections     │   │  │                          ││
-│  │  └───────────────────┘   │  │                          ││
-│  └──────────────────────────┘  └──────────────────────────┘│
+│  ┌────────────────────────────────────────────────────┐     │
+│  │ Client Subnet (new, or existing, e.g. 10.99.1.0/24) │     │
+│  │                                                      │     │
+│  │  ┌───────────────────┐   ┌───────────────────┐      │     │
+│  │  │ RAC Node 1        │   │ RAC Node 2        │      │     │
+│  │  │ - Private IP      │   │ - Private IP      │      │     │
+│  │  │ - VIP             │   │ - VIP             │      │     │
+│  │  └───────────────────┘   └───────────────────┘      │     │
+│  │                                                      │     │
+│  │  ┌────────────────────────────────────────────┐     │     │
+│  │  │ SCAN IPs (x3), load balance connections    │     │     │
+│  │  └────────────────────────────────────────────┘     │     │
+│  └────────────────────────────────────────────────────┘     │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ Shared ASM Storage                                   │   │
-│  │ - OCR (Oracle Cluster Registry)                      │   │
-│  │ - Voting Disks                                       │   │
-│  │ - DATA Disk Group                                    │   │
-│  │ - RECO Disk Group (backups)                          │   │
+│  │ Shared ASM Storage (OCR, voting disks, DATA, RECO)   │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+VM shapes use a single client subnet. A separate backup subnet is only supported for bare metal and Exadata shapes, so this module does not create one.
+
 
 ## Prerequisites
 
@@ -144,7 +133,7 @@ srvctl status database -d RACDB
 | pdb_name | PDB name | string | "PDB1" | no |
 | license_model | LICENSE_INCLUDED or BYOL | string | "BRING_YOUR_OWN_LICENSE" | no |
 
-See [variables.tf](variables.tf) for complete list.
+See [variables.tf](./variables.tf) for complete list.
 
 ## Module Outputs
 
@@ -212,7 +201,7 @@ oci limits value list --compartment-id <tenancy-ocid> --service-name compute
 - [OCI Database Service Documentation](https://docs.oracle.com/en-us/iaas/Content/Database/home.htm)
 - [OCI Terraform Provider](https://registry.terraform.io/providers/oracle/oci/latest/docs)
 - [Oracle RAC on OCI Best Practices](https://docs.oracle.com/en/solutions/deploy-oracle-db-rac-oci/)
-- [XStream CDC Configuration Guide](../OCI-GETTING-STARTED.md#step-5-configure-xstream-cdc)
+- [XStream CDC Configuration Guide](../../../oracle-rac-xstream/docs/XSTREAM-SETUP.md#xstream-on-oracle-rac)
 
 ## License
 
