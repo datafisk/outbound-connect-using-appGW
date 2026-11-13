@@ -30,7 +30,7 @@ At failover Azure updates the CNAME chain; the gateway re-resolves the backend a
 
 ## Setup
 
-1. Add the route (dry run first):
+1. Add the route (dry run first). This script is an Azure CLI alternative: recent `azurerm` versions can also create TCP listeners, backend settings and routing rules in Terraform (`listener`, `backend` and `routing_rule` blocks with `protocol = "Tcp"`, see [APPGW-SETUP.md](../../../oracle-rac/docs/APPGW-SETUP.md#22-configure-appgw-backend-pool)).
 
    ```bash
    ./scripts/setup.sh <appgw-rg> <appgw-name> <fog>.database.windows.net 1433

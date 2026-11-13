@@ -150,7 +150,9 @@ srvctl config vip -node <node2>
 Add a backend address pool with the RAC node VIPs:
 
 ```hcl
-# Terraform example
+# Terraform example (checked with terraform plan on azurerm 5.13.0, not applied: the `backend`, `listener` and `routing_rule`
+# blocks support Tcp and Tls; the older http_listener / backend_http_settings /
+# request_routing_rule blocks are HTTP only)
 resource "azurerm_application_gateway" "example" {
   # ... existing configuration ...
 
@@ -161,19 +163,12 @@ resource "azurerm_application_gateway" "example" {
   }
 
   # Backend settings for Oracle TCP port 1521
-  backend_settings {
-    name     = "oracle_1521"
-    port     = 1521
-    protocol = "Tcp"
-    timeout  = 900  # Idle timeout (seconds): long-lived database connections
-  }
-
-  # TCP Listener on port 1521
-  listener {
-    name                           = "oracle_listener"
-    frontend_ip_configuration_name = "appGwPrivateFrontendIpIPv4"
-    frontend_port_name             = "port_1521"
-    protocol                       = "Tcp"
+  backend {
+    name               = "oracle_1521"
+    port               = 1521
+    protocol           = "Tcp"
+    timeout_in_seconds = 900  # Idle timeout: long-lived database connections
+    probe_name         = "oracle_rac_probe"
   }
 
   # Frontend port
@@ -182,23 +177,31 @@ resource "azurerm_application_gateway" "example" {
     port = 1521
   }
 
+  # TCP listener on the private frontend
+  listener {
+    name                           = "oracle_listener"
+    frontend_ip_configuration_name = "appGwPrivateFrontendIpIPv4"
+    frontend_port_name             = "port_1521"
+    protocol                       = "Tcp"
+  }
+
   # Routing rule
   routing_rule {
     name                      = "route-to-oracle-rac"
-    rule_type                 = "Basic"
     listener_name             = "oracle_listener"
     backend_address_pool_name = "oracle_rac_oci"
-    backend_settings_name     = "oracle_1521"
+    backend_name              = "oracle_1521"
     priority                  = 110
   }
 
-  # Health probe for Oracle
+  # TCP health probe (a connect test only: it cannot see whether the database
+  # service exists on the node, see the troubleshooting guide)
   probe {
     name                = "oracle_rac_probe"
     protocol            = "Tcp"
     port                = 1521
     interval            = 30
-    timeout             = 60
+    timeout             = 30  # must not exceed interval
     unhealthy_threshold = 3
   }
 }

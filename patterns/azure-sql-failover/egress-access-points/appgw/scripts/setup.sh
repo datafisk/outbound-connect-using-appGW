@@ -48,7 +48,7 @@ run az network application-gateway listener create \
     --gateway-name "$GW" -g "$RG" -n "listener-$NAME" \
     --frontend-port "port_$PORT" --frontend-ip "$FRONTEND_IP"
 
-run az network application-gateway rule create \
+run az network application-gateway routing-rule create \
     --gateway-name "$GW" -g "$RG" -n "route-$NAME" \
     --listener "listener-$NAME" --address-pool "pool-$NAME" \
     --settings "settings-$NAME" --priority "$PRIORITY"
