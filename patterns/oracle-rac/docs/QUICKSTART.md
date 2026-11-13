@@ -116,7 +116,7 @@ In Confluent Cloud Console → Environment → Network → DNS:
 
 **Why**: The connector's hostname must resolve to the AppGW. The name is only a label (it need not match the SCAN or node names); the AppGW forwards to the VIPs.
 
-**If Oracle uses TLS (TCPS):** the name is no longer arbitrary. The connector checks the certificate it is shown against `connection.host`, so the name must be in the certificate's SAN/CN, or hostname validation must be disabled on the connector (less secure). If the AppGW terminates TLS, its certificate must cover the name. See [APPGW-SETUP.md](./APPGW-SETUP.md) step 3.3.
+**If Oracle uses TLS (TCPS):** keep the AppGW listener a plain TCP pass-through so the TLS stays end to end between the connector and the database. The name is then no longer arbitrary: the connector checks Oracle's certificate against `connection.host`, so the name must be in the certificate's SAN/CN, or hostname validation must be disabled on the connector (less secure). See [APPGW-SETUP.md](./APPGW-SETUP.md) step 3.3.
 
 ### 7. Deploy JDBC Source Connector (5 min)
 
@@ -182,7 +182,7 @@ confluent kafka topic consume oracle-rac-<SCHEMA>.<TABLE> --from-beginning
 | "Oracle Database server is unreachable" | Network connectivity | Check network connectivity, AppGW health, firewall rules |
 | "Got minus one from a read call" | Connection redirected or closed before the handshake | `connection.host` must resolve to the AppGW (not a SCAN IP), pool must hold VIPs, listener must be plain TCP |
 | "Unknown host specified" | No egress DNS entry for `connection.host` | Add an entry for that hostname in Confluent Cloud, targeting the EAP |
-| TLS error: "certificate does not match" / `No subject alternative names matching` | Oracle (or AppGW) certificate doesn't cover the egress DNS name | Use a name that is in the certificate, reissue the certificate, or disable hostname validation (less secure) |
+| TLS error: "certificate does not match" / `No subject alternative names matching` | Oracle's certificate doesn't cover the egress DNS name | Use a name that is in the certificate, reissue the certificate, or disable hostname validation (less secure) |
 | ORA-12514 on some connections | Service not registered on every pooled node | Register the service on all nodes, or pool only nodes that carry it |
 | Backend "Unhealthy" | Firewall/routing issue | Check firewall allows TCP 1521 from AppGW subnet |
 | Connector RUNNING but no data | Column mapping wrong | Verify incrementing/timestamp columns exist and have correct format |
@@ -192,7 +192,7 @@ confluent kafka topic consume oracle-rac-<SCHEMA>.<TABLE> --from-beginning
 ## Key Points
 
 ✅ **AppGW backend = node VIPs** - not the SCAN addresses, not the physical IPs  
-✅ **Egress DNS entry for `connection.host`** - resolves to the EAP in front of the AppGW (with TLS, the name must also match the certificate)  
+✅ **Egress DNS entry for `connection.host`** - resolves to the EAP in front of the AppGW (with TCPS, the name must also match Oracle's certificate)  
 ✅ **SCAN bypassed** - Direct node connections, no TNS redirect  
 ✅ **Service on every pooled node** - the AppGW cannot detect ORA-12514  
 ✅ **Leave REMOTE_LISTENER / LOCAL_LISTENER at defaults**  
