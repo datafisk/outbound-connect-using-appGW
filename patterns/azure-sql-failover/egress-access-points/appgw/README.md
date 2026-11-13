@@ -20,7 +20,6 @@ At failover Azure updates the CNAME chain; the gateway re-resolves the backend a
 - Fully private: no public SQL endpoint, no public DNS dependency.
 - Matches Azure's recommended design for failover groups with private endpoints; the only Confluent-specific part is EAP → AppGW.
 - One EAP and one AppGW can serve many connectors. For more Azure SQL setups, add another listener on a different port.
-- Cost: AppGW Standard_v2 is roughly $150-180/month (see [../../COST-ANALYSIS.md](../../COST-ANALYSIS.md)); close to zero incremental if you already run one.
 
 ## Prerequisites
 

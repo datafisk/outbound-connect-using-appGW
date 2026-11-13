@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Connect Confluent Cloud fully managed source connectors to IBM MQ with mutual TLS authentication and long-lived connection handling. Uses Azure Application Gateway with properly configured idle timeouts to prevent connection drops during queue inactivity (~$150-180/month for AppGW + compute costs).
+Connect Confluent Cloud fully managed source connectors to IBM MQ with mutual TLS authentication and long-lived connection handling. Uses Azure Application Gateway with properly configured idle timeouts to prevent connection drops during queue inactivity.
 
 ## Overview
 
@@ -179,29 +179,6 @@ In your connector config (`ibm-mq-source.json`):
 ```
 
 See [docs/HEARTBEAT-CONFIG.md](./docs/HEARTBEAT-CONFIG.md) for detailed configuration.
-
-## Cost Analysis
-
-### With Application Gateway
-
-| Component | Monthly Cost |
-|-----------|--------------|
-| **Application Gateway (Standard_v2)** | $150-180 |
-| **Private Endpoint** | $7 |
-| **IBM MQ Compute** | $50-500 (depends on VM size) |
-| **Data Transfer** | ~$5-10 |
-| **Total** | **~$212-697/month** |
-
-### Without Application Gateway
-
-| Component | Monthly Cost |
-|-----------|--------------|
-| **Private Endpoint** | $7 |
-| **IBM MQ Compute** | $50-500 |
-| **Data Transfer** | ~$5-10 |
-| **Total** | **~$62-517/month** |
-
-**Note**: Without AppGW, you'll need to manage reconnections during idle periods or use public endpoints.
 
 ## Documentation
 

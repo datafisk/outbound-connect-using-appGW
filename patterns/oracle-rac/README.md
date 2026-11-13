@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Connect Confluent Cloud fully managed Oracle connectors (XStream CDC, LogMiner-based CDC, or JDBC polling) to Oracle RAC clusters with high availability using Azure Application Gateway to bypass SCAN listener redirects. AppGW load balances across the RAC node VIPs directly (~$150-180/month for AppGW + Oracle compute costs). XStream node-failure behaviour was tested on a 2-node RAC: no data loss, but recovery after some failures is manual (see [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)). The LogMiner-based Oracle CDC Source connector and the JDBC Source connector were tested in the same scenarios and recovered without manual action (see [HA-TESTING-LOGMINER.md](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md), [HA-TESTING-JDBC.md](../oracle-rac-jdbc/docs/HA-TESTING-JDBC.md) and the [comparison](./docs/CONNECTOR-COMPARISON.md)).
+Connect Confluent Cloud fully managed Oracle connectors (XStream CDC, LogMiner-based CDC, or JDBC polling) to Oracle RAC clusters with high availability using Azure Application Gateway to bypass SCAN listener redirects. AppGW load balances across the RAC node VIPs directly. XStream node-failure behaviour was tested on a 2-node RAC: no data loss, but recovery after some failures is manual (see [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)). The LogMiner-based Oracle CDC Source connector and the JDBC Source connector were tested in the same scenarios and recovered without manual action (see [HA-TESTING-LOGMINER.md](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md), [HA-TESTING-JDBC.md](../oracle-rac-jdbc/docs/HA-TESTING-JDBC.md) and the [comparison](./docs/CONNECTOR-COMPARISON.md)).
 
 ## Overview
 
@@ -242,37 +242,6 @@ sqlplus <user>/<password>@//<appgw-private-ip>:1521/<service_name>
 # repeat a few times and check SELECT instance_name FROM v$instance;
 ```
 
-## Cost Analysis
-
-### With Oracle RAC on OCI
-
-| Component | Monthly Cost |
-|-----------|--------------|
-| **OCI DB System (RAC, 2 nodes)** | $1,000-5,000 |
-| **OCI FastConnect** | $215 (1 Gbps) |
-| **Azure ExpressRoute** | $155 (1 Gbps) |
-| **Application Gateway** | $150-180 |
-| **Private Endpoint** | $7 |
-| **Data Transfer** | ~$10-50 |
-| **Total** | **~$1,537-5,607/month** |
-
-### With Oracle RAC on Azure VMs
-
-| Component | Monthly Cost |
-|-----------|--------------|
-| **Azure VMs (2-3 nodes, 8 vCPU)** | $600-900 |
-| **Premium SSD (shared storage)** | $200-500 |
-| **Oracle License (BYOL)** | $0 (if you own) |
-| **Application Gateway** | $150-180 |
-| **Private Endpoint** | $7 |
-| **Total** | **~$957-1,587/month** |
-
-**Note**: Azure VM approach is complex and not recommended for production.
-
-### Without Application Gateway (Manual Failover)
-
-Lower cost but requires manual intervention during RAC node failures.
-
 ## Documentation
 
 - [docs/QUICKSTART.md](./docs/QUICKSTART.md) - Step-by-step deployment guide
@@ -286,7 +255,7 @@ Lower cost but requires manual intervention during RAC node failures.
 
 ## Key Learnings
 
-### SCAN Redirects Don't Work with Confluent Egress
+### SCAN Redirects Don't Work with Outbound Private Link
 
 The SCAN listener doesn't serve the session. It replies with a TNS redirect to a node listener address, and the client reconnects there. From Confluent Cloud that address (a node VIP or an Oracle-internal hostname) isn't resolvable or routable, so the connection fails.
 

@@ -2,14 +2,14 @@
 
 ## TL;DR
 
-[1-2 paragraph summary explaining the problem and the recommended solution. Include cost if applicable.]
+[1-2 paragraph summary explaining the problem and the recommended solution.]
 
 Example:
 ```
 [Service/Database] deployed with [HA/failover configuration] creates challenges for
 Confluent Cloud connectors because [technical limitation]. This pattern provides
 [number] tested approaches for [solving the problem] with automatic failover and
-private connectivity (~$X/month recommended approach).
+private connectivity.
 ```
 
 ## Overview
@@ -54,8 +54,6 @@ This pattern provides [number] tested approaches:
 
 ### 1. [Approach Name] (Recommended)
 
-**Cost**: ~$X/month
-
 [Description of how this approach works]
 
 **Pros:**
@@ -69,8 +67,6 @@ This pattern provides [number] tested approaches:
 📁 See: [path/to/approach/](./path/)
 
 ### 2. [Alternative Approach]
-
-**Cost**: ~$X/month
 
 [Description]
 
@@ -129,20 +125,9 @@ See [docs/TESTING.md](./docs/TESTING.md) for:
 - Failover testing procedures
 - Validation checklists
 
-## Cost Analysis
-
-See [COST-ANALYSIS.md](./COST-ANALYSIS.md) for detailed cost breakdown and comparison.
-
-**Quick Summary:**
-| Approach | Monthly Cost | Notes |
-|----------|--------------|-------|
-| Approach 1 | ~$X | Recommended |
-| Approach 2 | ~$Y | Alternative |
-
 ## Documentation
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed technical architecture
-- [COST-ANALYSIS.md](./COST-ANALYSIS.md) - Cost breakdown and comparison
 - [docs/QUICKSTART.md](./docs/QUICKSTART.md) - Step-by-step deployment guide
 - [docs/TESTING.md](./docs/TESTING.md) - Testing and validation procedures
 - [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) - Common issues and solutions

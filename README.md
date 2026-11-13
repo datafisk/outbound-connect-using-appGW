@@ -2,7 +2,7 @@
 
 Tested reference setups for connecting Confluent Cloud fully managed connectors to databases and brokers over private networking on Azure (Egress Access Points, Application Gateway, Private Link), with a focus on high availability and failover.
 
-Everything specific to a connector (architecture, setup, scripts, costs, testing, troubleshooting) lives in that pattern's folder. Start with its README.
+Everything specific to a connector (architecture, setup, scripts, testing, troubleshooting) lives in that pattern's folder. Start with its README.
 
 ## Patterns
 

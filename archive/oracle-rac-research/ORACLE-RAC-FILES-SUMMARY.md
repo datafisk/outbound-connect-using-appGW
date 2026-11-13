@@ -210,23 +210,6 @@ terraform apply
 | XStream User | C##GGADMIN |
 | Test Schema | ORDERMGMT (3 tables with sample data) |
 
-## Cost Breakdown
-
-### Monthly Costs (USD)
-
-| Component | PoC Config | Production Config |
-|-----------|------------|-------------------|
-| 2x VMs | $600 (D8s_v3) | $1,200 (D16s_v3) |
-| OS Disks | $20 | $40 |
-| Shared Disks | $200 | $400 |
-| **Subtotal** | **$820/month** | **$1,640/month** |
-
-Plus shared costs:
-- Application Gateway: ~$90/month (shared)
-- Private Link: ~$10/month
-
-**Total**: ~$920/month (PoC) or ~$1,740/month (Production)
-
 ## Next Steps
 
 ### Immediate (Blocked by Quota)

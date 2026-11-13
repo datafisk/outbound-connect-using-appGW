@@ -9,7 +9,6 @@ This Terraform module deploys a 2-node Oracle Real Application Clusters (RAC) da
 - ✅ **ASM Storage** - Automatic Storage Management for shared storage
 - ✅ **Automated Deployment** - Complete setup in 60-120 minutes
 - ✅ **XStream CDC Ready** - Pre-configured for Confluent Oracle CDC connector
-- ✅ **Cost Effective** - ~$435-800/month depending on license model
 
 ## Architecture
 
@@ -144,21 +143,6 @@ See [variables.tf](./variables.tf) for complete list.
 | database_connection_string | Full connection string |
 | deployment_summary | Summary of deployment |
 | next_steps | Instructions for next steps |
-
-## Cost Estimation
-
-Based on default configuration (VM.Standard2.4, 512 GB storage, BYOL):
-
-| Component | Monthly Cost |
-|-----------|--------------|
-| Compute (2 nodes) | ~$350 |
-| Storage (512 GB) | ~$50 |
-| Backups (7 days) | ~$25 |
-| Network | ~$10 |
-| **Total (BYOL)** | **~$435** |
-| **Total (License Included)** | **~$800** |
-
-Costs vary by region and configuration. Check [OCI Pricing](https://www.oracle.com/cloud/price-list.html).
 
 ## Cleanup
 

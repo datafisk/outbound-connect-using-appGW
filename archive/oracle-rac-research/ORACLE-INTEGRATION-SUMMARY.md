@@ -2,7 +2,7 @@
 
 ## 🎉 What's New
 
-This repository now supports **Oracle XStream CDC** as a second connector option alongside IBM MQ, sharing the same Azure Application Gateway infrastructure for cost-effective multi-connector deployments.
+This repository now supports **Oracle XStream CDC** as a second connector option alongside IBM MQ, sharing the same Azure Application Gateway infrastructure for multi-connector deployments.
 
 ## Architecture
 
@@ -205,11 +205,6 @@ create_oracle_connector   = true
 # - Azure infrastructure
 ```
 
-**Cost Savings:**
-- Single App Gateway: ~$100/month (shared)
-- vs. Two App Gateways: ~$200/month
-- **Saves ~$100/month**
-
 ## File Structure
 
 ```
@@ -255,107 +250,3 @@ create_oracle_connector   = true
 - Reproducible deployments
 - Version controlled configuration
 
-### ✅ Cost Optimized
-- Shared Application Gateway infrastructure
-- Oracle XE (free edition) for PoCs
-- Optional: Auto-shutdown when not in use
-
-### ✅ Production Ready
-- Network isolation via Private Link
-- NSG-based access control
-- Optional: Remove public IPs for production
-- Supports Enterprise Edition for production workloads
-
-## What's NOT Included
-
-- ❌ **Oracle XStream Outbound Server creation** - Must be done manually (see guide)
-  - Reason: Server config is specific to tables/schema requirements
-  - Takes 2 minutes via SQL
-
-- ❌ **Automatic Confluent connector deployment via Terraform**
-  - Can be added to `confluent.tf` (template ready)
-  - Or deploy via Confluent CLI/UI
-
-- ❌ **Oracle Enterprise Edition licensing**
-  - This setup uses Oracle XE (free)
-  - For production with EE, ensure proper licensing
-
-## Testing
-
-### Verify Oracle Setup
-
-```bash
-# Check Oracle is running
-ssh oracleadmin@<oracle-ip>
-docker ps
-docker logs oracle21c
-
-# Check sample data
-docker exec -it oracle21c sqlplus ordermgmt/<ORDERMGMT_PASSWORD>@XEPDB1
-SQL> SELECT COUNT(*) FROM orders;
-```
-
-### Generate Test Data
-
-```sql
--- Connect to PDB
-docker exec -it oracle21c sqlplus ordermgmt/<ORDERMGMT_PASSWORD>@XEPDB1
-
--- Generate orders
-EXEC generate_orders(100);
-COMMIT;
-
--- Verify in Kafka topics
-```
-
-### Monitor Capture
-
-```sql
--- Check XStream capture progress
-docker exec -it oracle21c sqlplus C##GGADMIN/<XSTREAM_PASSWORD>@XE
-
-SELECT server_name, captured_scn, applied_scn, status
-FROM DBA_XSTREAM_OUTBOUND_PROGRESS;
-```
-
-## Next Steps
-
-1. **Review Documentation:**
-   - Read `ORACLE-XSTREAM-SETUP.md` for detailed setup
-   - Check `modules/oracle-database/README.md` for module details
-
-2. **Deploy:**
-   ```bash
-   terraform init
-   terraform plan
-   terraform apply
-   ```
-
-3. **Create XStream Server:**
-   - Follow post-deployment steps in `ORACLE-XSTREAM-SETUP.md`
-
-4. **Monitor:**
-   - Check connector status
-   - View captured data in Kafka
-   - Monitor Oracle XStream server
-
-## Troubleshooting
-
-See `ORACLE-XSTREAM-SETUP.md` for detailed troubleshooting guide covering:
-- Connectivity issues
-- XStream server problems  
-- No data in topics
-- Performance tuning
-- Common error codes
-
-## Reference
-
-- **Confluent Docs:** [Oracle XStream Connector](https://docs.confluent.io/kafka-connectors/oracle-xstream/current/)
-- **Oracle Docs:** [XStream Guide](https://docs.oracle.com/en/database/oracle/oracle-database/21/xstrm/)
-- **Source Repo:** [confluent-new-cdc-connector](https://github.com/datafisk/confluent-new-cdc-connector)
-
----
-
-**Integration completed:** April 28, 2026  
-**Added support for:** Oracle XE 21c with XStream CDC  
-**Compatible with:** Existing IBM MQ connector setup

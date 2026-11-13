@@ -17,7 +17,7 @@ Oracle RAC provides a clustered database solution with multiple instances access
 - ✅ 2 Oracle Linux VMs (Standard_D4s_v3, 4 vCPUs, 16 GB RAM each - PoC optimized)
 - ✅ 3-network topology (public, private, interconnect) - works with existing VNets
 - ✅ Availability Set for fault domain distribution
-- ✅ Accelerated networking optional (disabled by default for PoC cost savings)
+- ✅ Accelerated networking optional (disabled by default for PoC)
 - ✅ NSG rules for RAC traffic (optional, can use existing NSGs)
 - ✅ Oracle 19c from Azure Marketplace (ready to install)
 - ✅ Pre-configured kernel parameters and Oracle users
@@ -34,7 +34,6 @@ This module is **optimized for PoC environments** by default:
 | VM Size | Standard_D4s_v3 (4 vCPU, 16 GB) | Standard_D8s_v3+ (8 vCPU, 32 GB+) |
 | OS Disk | 64 GB | 128 GB |
 | Accelerated Networking | Disabled | Enabled |
-| Monthly Cost | ~$310 | ~$640+ |
 
 **To switch to production config**, adjust variables in your deployment:
 ```hcl
@@ -117,7 +116,7 @@ module "oracle_rac" {
   # VM configuration (PoC defaults - adjust for production)
   vm_size                      = "Standard_D4s_v3"  # PoC: 4 vCPU, 16 GB RAM
   os_disk_size_gb              = 64  # PoC optimized
-  enable_accelerated_networking = false  # Disabled for PoC cost savings
+  enable_accelerated_networking = false  # Disabled for PoC
   
   # SSH configuration
   admin_username  = "azureuser"
@@ -300,38 +299,6 @@ Current allocation for 2-node RAC cluster:
 | SCAN VIP 3     | 10.0.10.22    | -              | -                   |
 
 **Application Gateway Backend Pool**: Use SCAN VIPs (10.0.10.20-22)
-
-## Cost Estimate
-
-### PoC Configuration (Default)
-
-| Component | Specification | Monthly Cost |
-|-----------|---------------|--------------|
-| 2x VMs | Standard_D4s_v3 (4 vCPU, 16 GB) | ~$290 |
-| OS Disks | 2x 64 GB Premium SSD | ~$20 |
-| Shared Disks (ASM) | Phase 2: ~6-9 disks | ~$200 |
-| **Phase 1-2 Total** | PoC infrastructure | **~$510/month** |
-
-### Production Configuration (Optional)
-
-| Component | Specification | Monthly Cost |
-|-----------|---------------|--------------|
-| 2x VMs | Standard_D8s_v3 (8 vCPU, 32 GB) | ~$600 |
-| OS Disks | 2x 128 GB Premium SSD | ~$40 |
-| Shared Disks (ASM) | 9x disks (OCR+DATA+FRA) | ~$300 |
-| **Phase 1-2 Total** | Production infrastructure | **~$940/month** |
-
-**Plus existing costs:**
-- Application Gateway: ~$90-110/month (shared)
-- Private Link: Minimal
-- Confluent Cloud: Based on connector usage
-
-**Compared to standalone Oracle:**
-- Standalone (XE): ~$150/month (PoC VM + disks)
-- RAC (PoC): ~$510/month (2 smaller VMs + shared disks)
-- RAC (Production): ~$940/month (2 VMs + shared disks)
-- **Premium for HA (PoC)**: ~$360/month (~3.4x cost)
-- **Premium for HA (Prod)**: ~$640/month (~6x cost vs standalone PoC)
 
 ## Compatibility with Existing Setup
 

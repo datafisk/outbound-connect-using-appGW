@@ -71,7 +71,6 @@ db_system_shape = "VM.Standard2.4"
 cpu_core_count = 4
 
 # Data storage size in GB (minimum 256 GB for RAC)
-# Affects cost - more storage = higher cost
 # Recommended: 512 GB for testing, 1024+ GB for production
 data_storage_size_gb = 512
 
@@ -123,8 +122,8 @@ ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... your-key-here"
 
 # License model
 # Options:
-#   LICENSE_INCLUDED           - Pay for Oracle license through OCI (~60% more expensive)
-#   BRING_YOUR_OWN_LICENSE     - Use your existing Oracle licenses (cheaper)
+#   LICENSE_INCLUDED           - Pay for Oracle license through OCI
+#   BRING_YOUR_OWN_LICENSE     - Use your existing Oracle licenses
 license_model = "BRING_YOUR_OWN_LICENSE"
 
 # ==============================================================================
@@ -158,20 +157,3 @@ tags = {
   CostCenter  = "engineering"
 }
 
-# ==============================================================================
-# ESTIMATED MONTHLY COST
-# ==============================================================================
-# Based on the configuration above:
-#
-# VM.Standard2.4 × 2 nodes:                ~$350/month
-# Storage 512 GB:                          ~$50/month
-# Backups (7 days retention):              ~$25/month
-# Network (minimal for testing):           ~$10/month
-# ------------------------------------------------------
-# Total (BYOL):                            ~$435/month
-# Total (LICENSE_INCLUDED):                ~$800/month
-#
-# Note: Actual costs may vary by region and usage
-# Check current pricing: https://www.oracle.com/cloud/price-list.html
-#
-# ==============================================================================

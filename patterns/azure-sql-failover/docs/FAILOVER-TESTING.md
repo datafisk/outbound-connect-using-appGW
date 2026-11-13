@@ -54,7 +54,7 @@ Dual Confluent Cloud EAPs, one direct to each Azure SQL environment, with CNAME 
 - The failover group FQDN is resolved against public DNS; the CNAME chain is followed until it reaches a regional name that matches a Confluent egress DNS entry, which routes to the right EAP.
 - No manual DNS updates at failover.
 - Some customers may have concerns about relying on public DNS.
-- Cheaper than AppGW, but doubles the EAP footprint against cluster quotas.
+- Needs no AppGW, but doubles the EAP footprint against cluster quotas.
 
 Setup: [../egress-access-points/dual-eap/](../egress-access-points/dual-eap/)
 
@@ -66,7 +66,7 @@ A reusable Confluent Cloud EAP to an Application Gateway, to customer-hosted Pri
 - Single endpoint for the SQL connector (`my-fog.database.windows.net`).
 - AppGW routes to the correct primary based on DNS-driven health probes and chases the Azure-managed CNAME chains.
 - No manual DNS updates at failover.
-- Slightly higher cost, but scales well when several Azure SQL setups are in scope (listener ports can be cycled on the same AppGW).
+- Scales well when several Azure SQL setups are in scope (listener ports can be cycled on the same AppGW).
 - The EAP and AppGW can be reused by other services and connectors.
 
 Setup: [../egress-access-points/appgw/](../egress-access-points/appgw/)
@@ -431,7 +431,6 @@ States:
 ## Related Documentation
 
 - [../README.md](../README.md) - Pattern overview
-- [../COST-ANALYSIS.md](../COST-ANALYSIS.md) - Cost breakdown
 - [Pattern README](../README.md) - Setup steps for each connectivity option
 
 ---

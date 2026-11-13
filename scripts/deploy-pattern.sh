@@ -183,8 +183,8 @@ deploy_azure_sql_failover() {
     # Determine approach
     if [ -z "$APPROACH" ]; then
         print_info "No approach specified. Available approaches:"
-        echo "  1. dual-eap  (Recommended, ~\$15/month)"
-        echo "  2. appgw     (Alternative, ~\$150-180/month)"
+        echo "  1. dual-eap  (Recommended)"
+        echo "  2. appgw     (Alternative)"
         read -p "Select approach (1 or 2): " choice
         case $choice in
             1) APPROACH="dual-eap" ;;

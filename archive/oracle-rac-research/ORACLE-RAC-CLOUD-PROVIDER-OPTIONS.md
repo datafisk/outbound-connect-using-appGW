@@ -38,7 +38,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
   - Complete RAC feature set
   - Official Oracle support
 - **Cons:**
-  - Most expensive option ($$$$$)
   - Minimum commitment requirements
   - Overkill for testing/development
 - **Deployment Time:** 1-2 hours (automated)
@@ -49,7 +48,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 - **RAC Support:** 2-node RAC cluster
 - **Configuration:** Select "2 Node RAC" during provisioning
 - **Pros:**
-  - Much lower cost than Exadata ($$)
   - Fully managed (patching, backups, monitoring)
   - True multi-node RAC
   - Perfect for testing XStream CDC
@@ -64,7 +62,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
   - VCN (Virtual Cloud Network) with subnet
   - SSH key pair
   - Choose DB version (19c recommended for XStream)
-- **Estimated Cost:** ~$500-1500/month depending on VM size
 - **Best For:** XStream CDC connector testing (RECOMMENDED)
 
 #### 3. **Autonomous Database Shared**
@@ -80,7 +77,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 - **Configuration:** Manual installation similar to on-premises
 - **Pros:**
   - Full control over RAC configuration
-  - Lower cost than managed services ($)
   - Can customize cluster topology
   - Native OCI networking (no multicast issues like Azure)
 - **Cons:**
@@ -138,7 +134,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
   - Can use local NVMe storage for ASM
   - Supported by both AWS and Oracle
 - **Cons:**
-  - Expensive bare metal instances ($$$)
   - Manual installation required (6-8 hours)
   - Complex networking setup (Elastic Fabric Adapter for interconnect)
   - You manage all patching, backups, HA
@@ -156,7 +151,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 - **Network Challenge:** AWS VPC doesn't support multicast (like Azure)
   - Solution: Configure Grid Infrastructure to use unicast instead
   - Easier than Azure because Oracle provides unicast configuration
-- **Estimated Cost:** ~$6000-12000/month (bare metal is expensive)
 - **Best For:** Production RAC on AWS, specific AWS integration requirements
 
 #### 3. **EC2 Standard Instances (c5, m5, r5) with Manual RAC Install**
@@ -186,15 +180,13 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
   - Suitable for Oracle workloads
   - High-speed interconnect (RoCE)
 - **Cons:**
-  - Very expensive ($$$$$)
   - Limited availability (select regions only)
   - Minimum commitment (typically 36 months)
   - Longer provisioning time (days to weeks)
   - Overkill for testing
 - **Deployment Time:** 3-7 days (requires provisioning physical hardware)
-- **Estimated Cost:** ~$10,000-30,000/month (hardware commitment)
 - **Best For:** Large-scale production Oracle deployments on GCP
-- **Verdict:** ⚠️ Too expensive and slow for testing
+- **Verdict:** ⚠️ Too slow for testing
 
 ### Self-Install Options on GCP
 
@@ -204,7 +196,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 - **Configuration:** Manual Grid Infrastructure + RAC installation
 - **Pros:**
   - Flexible VM sizing
-  - Lower cost than bare metal ($$)
   - Full control over configuration
 - **Cons:**
   - Manual installation (6-8 hours)
@@ -225,26 +216,12 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 - **Network Challenge:** GCP VPC doesn't support multicast
   - Solution: Configure Grid Infrastructure for unicast
   - Documented but less common than OCI
-- **Estimated Cost:** ~$800-2000/month depending on VM size
 - **Best For:** Testing when GCP is organizational standard
 - **Verdict:** ⚠️ **POSSIBLE but NOT RECOMMENDED** - limited support
 
 ---
 
 ## Detailed Comparison
-
-### Cost Comparison (Monthly Estimates for 2-Node RAC)
-
-| Option | Infrastructure | Storage | Total/Month | Notes |
-|--------|---------------|---------|-------------|-------|
-| **OCI Base DB Service with RAC** | $400-1000 | $100-300 | **$500-1300** | BEST VALUE ⭐ |
-| OCI Exadata Cloud Service | $3000-8000 | Included | $3000-8000 | Production grade |
-| OCI VM Self-Install | $200-600 | $50-200 | $250-800 | Cheapest but manual |
-| AWS RDS Oracle (RAC One Node) | $500-1500 | Included | $500-1500 | NOT true RAC ❌ |
-| AWS EC2 Bare Metal Self-Install | $5000-10000 | $200-500 | $5200-10500 | Very expensive |
-| GCP Bare Metal Solution | $10000-25000 | Included | $10000-25000 | Enterprise only |
-| GCP Compute Engine Self-Install | $400-1200 | $100-300 | $500-1500 | Limited support |
-| Azure (any option) | N/A | N/A | **NOT VIABLE** | ❌ |
 
 ### Feature Comparison
 
@@ -280,7 +257,7 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 1. ✅ **True 2-node RAC** - Tests actual multi-instance RAC behavior
 2. ✅ **Fully managed** - Minimal operational overhead
 3. ✅ **Fast deployment** - 1-2 hours vs 6-8+ hours for self-install
-4. ✅ **Best cost-value** - $500-1300/month for testing
+4. ✅ **Good fit for testing**
 5. ✅ **Official Oracle support** - Direct support from Oracle
 6. ✅ **XStream CDC ready** - All features available
 7. ✅ **No network workarounds** - Native Oracle networking
@@ -322,7 +299,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 10. Configure XStream CDC
 
 **Estimated Total Time:** 10-14 hours (manual setup + troubleshooting)
-**Estimated Cost:** $5000-10000/month
 
 ---
 
@@ -332,7 +308,7 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 - Reason: Not true multi-node RAC, cannot test RAC-specific features
 
 ❌ **GCP Bare Metal Solution**
-- Reason: Too expensive ($10k-30k/month), long provisioning time, overkill for testing
+- Reason: long provisioning time, overkill for testing
 
 ❌ **GCP Compute Engine Self-Install**
 - Reason: Limited Oracle support, complex networking, better alternatives exist
@@ -345,7 +321,7 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
 ## Quick Start Guide: OCI Base Database Service with RAC
 
 ### Prerequisites
-1. OCI account (can use 30-day free trial with $300 credit)
+1. OCI account
 2. SSH key pair for VM access
 3. Oracle Database 19c license or use included license
 
@@ -461,18 +437,6 @@ OCI is Oracle's native cloud platform and provides the **best support for Oracle
    - Use xstrmadmin credentials
    - Test data replication from both RAC instances
 
-### Total Cost Estimate (OCI Base DB Service with RAC)
-```
-VM.Standard2.4 shape × 2 nodes:          ~$350/month
-Storage (500GB DATA + 200GB RECO):       ~$75/month
-Backup storage (optional):                ~$25/month
-Network egress (minimal for testing):     ~$10/month
-----------------------------------------------------------
-Total:                                   ~$460/month
-
-With license included:                   ~$800-1000/month
-```
-
 ### Cleanup After Testing
 ```
 OCI Console → Oracle Database → DB Systems → <your-db-system> → Terminate
@@ -486,13 +450,11 @@ All resources (VMs, storage, networking) are deleted automatically.
 **For Confluent XStream CDC connector testing against Oracle RAC:**
 
 1. **BEST OPTION:** Oracle Cloud Infrastructure Base Database Service with 2-Node RAC
-   - Fast, affordable, fully managed, officially supported
-   - Estimated cost: $500-1300/month
+   - Fast, fully managed, officially supported
    - Deployment time: 1-2 hours
 
 2. **IF AWS IS REQUIRED:** EC2 Bare Metal with self-installed RAC
-   - More complex, expensive, time-consuming
-   - Estimated cost: $5000-10000/month
+   - More complex and time-consuming
    - Deployment time: 10-14 hours
 
 3. **AVOID:** Azure, GCP, AWS RDS (RAC One Node)

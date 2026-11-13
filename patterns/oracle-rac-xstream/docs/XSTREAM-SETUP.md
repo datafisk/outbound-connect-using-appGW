@@ -401,20 +401,6 @@ oracle_vm_size   = "Standard_D8s_v3"  # 8 vCPUs, 32 GB RAM
 
 ---
 
-## Cost Estimate (Option 1: Provisioned Oracle)
-
-- Application Gateway Standard_v2: ~$90-110/month (shared with IBM MQ)
-- Oracle VM (Standard_D4s_v3): ~$140/month
-- Storage (256 GB Premium SSD): ~$30/month
-- **Total additional cost for Oracle: ~$170/month**
-
-**Cost Savings:**
-- No Oracle license fees (XE edition is free)
-- Shared Application Gateway (vs dedicated: saves ~$100/month)
-- Auto-shutdown Oracle VM when not in use to save costs
-
----
-
 ## Security Recommendations
 
 ### Production Deployment

@@ -52,7 +52,3 @@ Prerequisites: SQL servers and failover group deployed (see [../../terraform/](.
 - **Connector FAILED, "Could not connect":** check both EAPs are ready, both regional DNS entries exist, and there is no entry for the failover group FQDN. With public access disabled on the SQL servers, a missing regional entry means no path at all.
 - **Connector stuck on the old region after failover:** check for a stray egress DNS entry on the failover group FQDN.
 - **Confirm the private path:** the SQL `sys.dm_exec_connections` `client_net_address` for the connector login should not be a public IP.
-
-## Cost
-
-Azure side: roughly $7.30/month per private endpoint plus $0.01/GB processed. Confluent-side EAP charges depend on your cluster type and are not included here; check current Confluent pricing. See [../../COST-ANALYSIS.md](../../COST-ANALYSIS.md).
