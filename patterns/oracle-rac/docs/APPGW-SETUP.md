@@ -290,7 +290,8 @@ The egress DNS name is arbitrary for plain TCP. **If the Oracle listener uses TL
 | Setup | What the connector sees | What must be true |
 |-------|-------------------------|-------------------|
 | AppGW TCP listener (pass-through), Oracle serves TLS | Oracle's server certificate | The egress DNS name is in the certificate's SAN/CN, **or** hostname/DN validation is disabled on the connector |
-| AppGW TLS listener (AppGW terminates TLS) | The AppGW listener's certificate | That certificate covers the egress DNS name. The AppGW-to-Oracle leg is then plain TCP |
+| AppGW TLS listener (AppGW terminates TLS) | The AppGW listener's certificate | That certificate covers the egress DNS name. The AppGW-to-Oracle leg then needs a **`Tcp` backend** pointing at a plain (non-TCPS) Oracle listener. A `Tcp` backend cannot reach a TCPS listener, and a TLS-terminating frontend does not change the backend protocol |
+| AppGW TLS listener, Oracle listener is TCPS only | The AppGW listener's certificate | Use a **`Tls` backend** (the AppGW then opens a TLS session to Oracle and must trust its certificate), or use TCP pass-through (first row) |
 | Plain TCP end to end | No certificate | Nothing, the name is only a label |
 
 Notes:
@@ -305,37 +306,31 @@ Notes:
 
 ### 4.1 Connector Configuration
 
-Create `oracle-rac-connector.json`:
+Create `oracle-rac-connector.json` (a flat file, as `confluent connect cluster create --config-file` expects; `connection.host` is the egress DNS name from step 3.1):
 
 ```json
 {
   "name": "oracle-rac-jdbc-source",
-  "config": {
-    "connector.class": "OracleDatabaseSource",
-    "kafka.auth.mode": "KAFKA_API_KEY",
-    "kafka.api.key": "<your-kafka-api-key>",
-    "kafka.api.secret": "<your-kafka-api-secret>",
-    "tasks.max": "1",
-    
-    "connection.host": "oracle.<your-domain>",  // the egress DNS name from step 3.1
-    "connection.port": "1521",
-    "connection.user": "jdbc_connector",
-    "connection.password": "<jdbc_connector_password>",
-    "db.name": "<pdb_name>.<domain>",
-    "oracle.net.ssl_server_dn_match": "false",
-    
-    "table.include.list": "<SCHEMA>.<TABLE>",
-    "mode": "timestamp+incrementing",
-    "incrementing.column.mapping": "<SCHEMA>.<TABLE>:[<ID_COLUMN>]",
-    "timestamp.columns.mapping": "<SCHEMA>.<TABLE>:[<TIMESTAMP_COLUMN>]",
-    
-    "poll.interval.ms": "5000",
-    "batch.max.rows": "100",
-    
-    "topic.prefix": "oracle-rac-",
-    "output.data.format": "JSON",
-    "output.key.format": "JSON"
-  }
+  "connector.class": "OracleDatabaseSource",
+  "kafka.auth.mode": "KAFKA_API_KEY",
+  "kafka.api.key": "<your-kafka-api-key>",
+  "kafka.api.secret": "<your-kafka-api-secret>",
+  "tasks.max": "1",
+  "connection.host": "oracle.<your-domain>",
+  "connection.port": "1521",
+  "connection.user": "jdbc_connector",
+  "connection.password": "<jdbc_connector_password>",
+  "db.name": "<pdb_name>.<domain>",
+  "oracle.net.ssl_server_dn_match": "false",
+  "table.include.list": "<SCHEMA>.<TABLE>",
+  "mode": "timestamp+incrementing",
+  "incrementing.column.mapping": "<SCHEMA>.<TABLE>:[<ID_COLUMN>]",
+  "timestamp.columns.mapping": "<SCHEMA>.<TABLE>:[<TIMESTAMP_COLUMN>]",
+  "poll.interval.ms": "5000",
+  "batch.max.rows": "100",
+  "topic.prefix": "oracle-rac-",
+  "output.data.format": "JSON",
+  "output.key.format": "JSON"
 }
 ```
 

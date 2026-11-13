@@ -145,7 +145,7 @@ Conclusions:
 
 1. Register the connector database service on **all** RAC instances in the AppGW pool; use the node **VIPs** as backends.
 2. Monitor `dba_xstream_outbound.status` and end-to-end lag. Alert on anything other than `ATTACHED`. Do not rely on connector status.
-3. Write down the recovery runbook above (re-enable `XOUT`, wait for the old DB session to clear, pause, resume) and test it in your environment.
+3. Write down the recovery runbook above (re-enable `XOUT`, pause, wait for the pause to apply and the old DB session to clear, then resume) and test it in your environment.
 4. After any RAC restart, plan for a manual check of XStream status. Do not assume the connector self-heals.
 5. Rebooting the node that hosts the XStream session will interrupt replication; schedule maintenance accordingly and drain that node last.
 6. Keep prefixes unique across all connections that share the Azure hub gateway.

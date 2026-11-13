@@ -60,12 +60,15 @@ run az network application-gateway settings create \
     --gateway-name "$GW" -g "$RG" -n "settings-$NAME" \
     --port "$PORT" --protocol Tcp --timeout "$IDLE_SECONDS" --probe "probe-$NAME"
 
-# Reuses the frontend port if the gateway already has one for this number.
-if az network application-gateway frontend-port show --gateway-name "$GW" -g "$RG" -n "port_$PORT" ${SUBSCRIPTION:+--subscription "$SUBSCRIPTION"} >/dev/null 2>&1; then
-    echo "(frontend port port_$PORT already exists, reusing)"
+# Reuses a frontend port with this number if the gateway already has one, whatever it is named.
+FPORT=$(az network application-gateway frontend-port list --gateway-name "$GW" -g "$RG" ${SUBSCRIPTION:+--subscription "$SUBSCRIPTION"} \
+    --query "[?port==\`$PORT\`].name | [0]" -o tsv 2>/dev/null)
+if [ -n "$FPORT" ]; then
+    echo "(frontend port $FPORT already exists for port $PORT, reusing)"
 else
+    FPORT="port_$PORT"
     run az network application-gateway frontend-port create \
-        --gateway-name "$GW" -g "$RG" -n "port_$PORT" --port "$PORT"
+        --gateway-name "$GW" -g "$RG" -n "$FPORT" --port "$PORT"
 fi
 
 LISTENER_ARGS=()
@@ -73,7 +76,7 @@ LISTENER_ARGS=()
 [ -n "$SSL_CERT" ] && LISTENER_ARGS+=(--ssl-cert "$SSL_CERT")
 run az network application-gateway listener create \
     --gateway-name "$GW" -g "$RG" -n "listener-$NAME" \
-    --frontend-port "port_$PORT" --frontend-ip "$FRONTEND_IP" "${LISTENER_ARGS[@]}"
+    --frontend-port "$FPORT" --frontend-ip "$FRONTEND_IP" "${LISTENER_ARGS[@]}"
 
 run az network application-gateway routing-rule create \
     --gateway-name "$GW" -g "$RG" -n "route-$NAME" \

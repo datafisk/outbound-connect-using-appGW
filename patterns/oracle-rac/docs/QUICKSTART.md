@@ -125,29 +125,24 @@ Create `oracle-connector.json`:
 ```json
 {
   "name": "oracle-rac-jdbc-source",
-  "config": {
-    "connector.class": "OracleDatabaseSource",
-    "kafka.auth.mode": "KAFKA_API_KEY",
-    "kafka.api.key": "<your-api-key>",
-    "kafka.api.secret": "<your-api-secret>",
-    "tasks.max": "1",
-    
-    "connection.host": "oracle.<your-domain>",
-    "connection.port": "1521",
-    "connection.user": "jdbc_connector",
-    "connection.password": "<password>",
-    "db.name": "<pdb_name>.<domain>",
-    
-    "table.include.list": "<SCHEMA>.<TABLE>",
-    "mode": "timestamp+incrementing",
-    "incrementing.column.mapping": "<SCHEMA>.<TABLE>:[<ID_COL>]",
-    "timestamp.columns.mapping": "<SCHEMA>.<TABLE>:[<TS_COL>]",
-    
-    "poll.interval.ms": "5000",
-    "batch.max.rows": "100",
-    "topic.prefix": "oracle-rac-",
-    "output.data.format": "JSON"
-  }
+  "connector.class": "OracleDatabaseSource",
+  "kafka.auth.mode": "KAFKA_API_KEY",
+  "kafka.api.key": "<your-api-key>",
+  "kafka.api.secret": "<your-api-secret>",
+  "tasks.max": "1",
+  "connection.host": "oracle.<your-domain>",
+  "connection.port": "1521",
+  "connection.user": "jdbc_connector",
+  "connection.password": "<password>",
+  "db.name": "<pdb_name>.<domain>",
+  "table.include.list": "<SCHEMA>.<TABLE>",
+  "mode": "timestamp+incrementing",
+  "incrementing.column.mapping": "<SCHEMA>.<TABLE>:[<ID_COL>]",
+  "timestamp.columns.mapping": "<SCHEMA>.<TABLE>:[<TS_COL>]",
+  "poll.interval.ms": "5000",
+  "batch.max.rows": "100",
+  "topic.prefix": "oracle-rac-",
+  "output.data.format": "JSON"
 }
 ```
 

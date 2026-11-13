@@ -222,7 +222,7 @@ With one node and one VIP the pool has a single backend and the steps above are 
 ### 7. Operating a RAC with XStream
 
 - Monitor `dba_xstream_outbound.status` (expect `ATTACHED`) and lag. Connector status alone can read RUNNING while the outbound server is DISABLED.
-- After a node restart, check XStream status. If `DISABLED`, run `EXEC dbms_xstream_adm.start_outbound('XOUT');`, wait for the old `C##GGADMIN` session to disappear from `gv$session`, then pause and resume the connector.
+- After a node restart, check XStream status. If `DISABLED`, run `EXEC dbms_xstream_adm.start_outbound('XOUT');`, then pause the connector, wait until the pause has applied and the old `C##GGADMIN` session has disappeared from `gv$session`, then resume it. Do not wait for the session before pausing: a stalled task keeps its database connection until the pause takes effect.
 - See [HA-TESTING-XSTREAM.md](./HA-TESTING-XSTREAM.md) for the measured behaviour in six failure scenarios.
 
 ---
