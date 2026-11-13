@@ -29,7 +29,6 @@ patterns/
     docs/                  setup, testing, troubleshooting
   _template/               starting point for a new pattern
 scripts/deploy-pattern.sh  guided deployment helper
-archive/                   old research
 ```
 
 ## Adding a pattern
