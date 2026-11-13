@@ -174,32 +174,13 @@ cd egress-access-points/appgw-scan/scripts
 
 ### Deploy Connector
 
-#### For JDBC Source Connector:
+#### For the JDBC Source connector (polling, not CDC):
 
-```bash
-cd ../../connector-config/
+See [../oracle-rac-jdbc/docs/JDBC-SETUP.md](../oracle-rac-jdbc/docs/JDBC-SETUP.md) for the tested configuration of the fully managed connector and the settings that cause errors.
 
-# Create connector config
-cat > oracle-jdbc-source.json <<EOF
-{
-  "name": "oracle-rac-jdbc-source",
-  "config": {
-    "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
-    "connection.url": "jdbc:oracle:thin:@//<appgw-ip>:1521/<service_name>",
-    "connection.user": "jdbc_connector",
-    "connection.password": "<password>",
-    "mode": "incrementing",
-    "incrementing.column.name": "id",
-    "topic.prefix": "oracle-rac-",
-    "table.whitelist": "<schema>.<table>",
-    "tasks.max": "1"
-  }
-}
-EOF
+#### For the LogMiner-based Oracle CDC Source connector:
 
-# Create connector
-confluent connect cluster create --config-file oracle-jdbc-source.json
-```
+See [../oracle-rac-logminer/docs/LOGMINER-SETUP.md](../oracle-rac-logminer/docs/LOGMINER-SETUP.md).
 
 #### For XStream (CDC) Connector:
 
@@ -223,7 +204,9 @@ The gateway, egress and RAC setup in this folder are shared. Each connector has 
 |-----------|--------|---------------------------------|
 | Oracle XStream CDC Source | [oracle-rac-xstream](../oracle-rac-xstream/README.md) | No data loss, but recovery after some node failures is manual |
 | Oracle CDC Source (LogMiner) | [oracle-rac-logminer](../oracle-rac-logminer/README.md) | Recovered from every tested failure without manual action; higher latency |
-| Oracle JDBC Source | [oracle-rac-jdbc](../oracle-rac-jdbc/) | In progress |
+| Oracle JDBC Source (polling, not CDC) | [oracle-rac-jdbc](../oracle-rac-jdbc/README.md) | Least affected by node failures; recovered from every tested failure without manual action |
+
+Side by side: [docs/CONNECTOR-COMPARISON.md](./docs/CONNECTOR-COMPARISON.md).
 
 ## Testing High Availability (XStream)
 

@@ -2,28 +2,24 @@
   "name": "oracle-rac-jdbc-source",
   "config": {
     "connector.class": "OracleDatabaseSource",
-    "kafka.auth.mode": "KAFKA_API_KEY",
-    "kafka.api.key": "<KAFKA_API_KEY>",
-    "kafka.api.secret": "<KAFKA_API_SECRET>",
+    "kafka.auth.mode": "SERVICE_ACCOUNT",
+    "kafka.service.account.id": "<SERVICE_ACCOUNT_ID>",
     "tasks.max": "1",
-
     "connection.host": "<EGRESS_DNS_NAME>",
     "connection.port": "1521",
-    "connection.user": "jdbc_connector",
-    "connection.password": "<ORACLE_PASSWORD>",
-    "db.name": "xstreampdb.petertestnodes.peterglab.oraclevcn.com",
-    "oracle.net.ssl_server_dn_match": "false",
-
-    "table.include.list": "JDBC_CONNECTOR.CUSTOMERS",
-    "mode": "timestamp+incrementing",
-    "incrementing.column.mapping": "JDBC_CONNECTOR.CUSTOMERS:[ID]",
-    "timestamp.columns.mapping": "JDBC_CONNECTOR.CUSTOMERS:[UPDATED_AT]",
-
+    "connection.user": "<JDBC_USER>",
+    "connection.password": "<JDBC_USER_PASSWORD>",
+    "db.connection.type": "SERVICE_NAME",
+    "db.name": "<PDB_SERVICE_NAME_ON_ALL_INSTANCES>",
+    "db.timezone": "UTC",
+    "ssl.mode": "disabled",
+    "table.types": "TABLE",
+    "query": "SELECT CAST(<ID_COLUMN> AS NUMBER(18,0)) AS <ID_COLUMN>, <OTHER_COLUMNS> FROM <SCHEMA>.<TABLE>",
+    "mode": "incrementing",
+    "incrementing.column.name": "<ID_COLUMN>",
     "poll.interval.ms": "5000",
-    "batch.max.rows": "100",
-
-    "topic.prefix": "oracle-rac-",
-    "output.data.format": "JSON",
-    "output.key.format": "JSON"
+    "batch.max.rows": "1000",
+    "topic.prefix": "<TOPIC_NAME>",
+    "output.data.format": "JSON_SR"
   }
 }
