@@ -285,22 +285,17 @@ nslookup oracle.<your-domain>
 
 ### 3.3 TLS and Hostname Validation
 
-**Recommendation: always use a TCP listener (pass-through) on the AppGW, also when the Oracle listener uses TLS (TCPS).** The AppGW then only forwards bytes. It does not terminate, inspect or re-encrypt the TLS session, so the TLS stays end to end between the connector and the database, and the AppGW needs no certificate.
+**Recommendation: use a TCP listener (pass-through) on the AppGW, also when the Oracle listener uses TLS (TCPS).** The AppGW then only forwards bytes. It does not terminate, inspect or re-encrypt the TLS session, so the TLS stays end to end between the connector and the database, and the AppGW needs no certificate. Terminating TLS on the AppGW is **not covered by this repo**; use it only if you have a specific requirement for it, and test it yourself.
 
 With plain TCP the egress DNS name is only a label. **With TCPS it matters:** the connector checks the certificate Oracle presents against the hostname it dialed (`connection.host`, the egress DNS name). Either:
 
 - put the egress DNS name in the Oracle server certificate's SAN/CN (preferred), or
 - disable hostname/DN validation on the connector (less secure: the connection is still encrypted, but the server's identity is no longer checked).
 
-| Setup | What the connector sees | What must be true |
-|-------|-------------------------|-------------------|
-| **AppGW TCP listener and `Tcp` backend (recommended)**, Oracle plain or TCPS | Oracle's own certificate (TCPS) or none | TCPS: the egress DNS name is in the certificate's SAN/CN, or DN validation is disabled on the connector. Plain: nothing |
-| AppGW TLS listener (AppGW terminates TLS), not recommended | The AppGW listener's certificate | That certificate covers the egress DNS name, and the AppGW holds a certificate and breaks the end-to-end TLS. The AppGW-to-Oracle leg needs a `Tcp` backend to a plain (non-TCPS) Oracle listener, or a `Tls` backend if the listener is TCPS only. A TLS-terminating frontend does not change the backend protocol |
-
 Notes:
 - Disabling validation (for the JDBC connector, `oracle.net.ssl_server_dn_match=false`, as in the example in step 4.1) lets the connection through but no longer verifies the server's identity.
 - Not tested in this repo: the OCI retest used a plain TCP listener, and the connector config had no TLS setting. Confirm the exact TLS and DN-match property names for your connector type (the XStream connector's differ from JDBC) before relying on them.
-- Listeners sharing an AppGW port must all be the same type (TCP or TLS).
+- Listeners sharing an AppGW port must all be the same type (TCP or TLS), so a TCP listener cannot be added on a port that already has a TLS listener.
 - Typical failure: `SSLHandshakeException` / "certificate does not match" or `No subject alternative names matching ...` in the connector log.
 
 ---
@@ -466,10 +461,10 @@ sqlplus <user>/<password>@//<node2-vip>:1521/<service_name>
 
 ### Connector Status: FAILED - TLS certificate / hostname mismatch
 
-**Cause**: The listener is TLS and the egress DNS name is not in the certificate the connector is shown (Oracle's, or the AppGW's if it terminates TLS).
+**Cause**: The Oracle listener uses TLS (TCPS) and the egress DNS name is not in Oracle's certificate, which the connector sees through the AppGW's TCP pass-through.
 
 **Check:**
-1. Is the Oracle listener TCPS, and is the AppGW listener TCP (pass-through) or TLS (terminating)?
+1. Is the Oracle listener TCPS, and is the AppGW listener a TCP (pass-through) listener?
 2. Does the certificate's SAN/CN include the exact `connection.host` name?
 
 **Fix**: Reissue the certificate with the egress DNS name, or disable hostname/DN validation on the connector (less secure). See step 3.3.

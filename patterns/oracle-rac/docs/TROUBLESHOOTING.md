@@ -56,12 +56,12 @@ SELECT name FROM v$services WHERE name NOT LIKE 'SYS%';
 
 ### Error: TLS handshake / "certificate does not match" / "No subject alternative names matching"
 
-**Cause**: The Oracle listener uses TLS (TCPS) and the hostname in `connection.host` (the egress DNS name) is not in the certificate the connector is shown. If the AppGW terminates TLS, the certificate is the AppGW listener's; otherwise it is Oracle's.
+**Cause**: The Oracle listener uses TLS (TCPS) and the hostname in `connection.host` (the egress DNS name) is not in Oracle's certificate, which the connector sees through the AppGW's TCP pass-through listener.
 
 **Solutions:**
 1. Issue or choose a certificate whose SAN/CN includes the egress DNS name
 2. Or disable hostname/DN validation on the connector (less secure; for JDBC, `oracle.net.ssl_server_dn_match=false`)
-3. Confirm the AppGW listener type: TCP passes the stream through, TLS terminates it (listeners sharing a port must be the same type)
+3. Confirm the AppGW listener is a TCP (pass-through) listener. TLS termination on the AppGW is not covered by this repo
 
 See [APPGW-SETUP.md](./APPGW-SETUP.md) step 3.3.
 

@@ -7,13 +7,12 @@
 # Usage: ./setup.sh <appgw-rg> <appgw-name> <listener-port> <node-vip> [<node-vip> ...] [--apply]
 #   e.g. ./setup.sh my-resource-group my-appgw 1521 10.0.1.10 10.0.1.11 --apply
 #
-# TLS/SNI listener (as on a gateway that terminates TLS for oracle.<domain>): set LISTENER_HOST
-#   and SSL_CERT, e.g.  LISTENER_HOST=oracle.example.com SSL_CERT=appgw-server ./setup.sh ...
-#   Without them a plain TCP listener is created. Listeners sharing a port must all be the same
-#   type, so a plain TCP listener cannot be added on a port that already has a TLS listener.
+# Creates a plain TCP (pass-through) listener: TLS between connector and database is not touched.
+#   TLS termination on the gateway is not covered here. Listeners sharing a port must be the same
+#   type, so a TCP listener cannot be added on a port that already has a TLS listener.
 # NOT yet run against a live gateway; read the printed commands before applying.
 #
-# Env overrides: LISTENER_HOST, SSL_CERT, SUBSCRIPTION (az subscription id/name), NAME (object name suffix, default oracle-rac-<port>), IDLE_SECONDS (default 900),
+# Env overrides: SUBSCRIPTION (az subscription id/name), NAME (object name suffix, default oracle-rac-<port>), IDLE_SECONDS (default 900),
 #   FRONTEND_IP (default appGwPrivateFrontendIpIPv4), PRIORITY (default 130),
 #   PROBE_INTERVAL (default 5), PROBE_THRESHOLD (default 2)
 
@@ -71,12 +70,9 @@ else
         --gateway-name "$GW" -g "$RG" -n "$FPORT" --port "$PORT"
 fi
 
-LISTENER_ARGS=()
-[ -n "$LISTENER_HOST" ] && LISTENER_ARGS+=(--host-names "$LISTENER_HOST")
-[ -n "$SSL_CERT" ] && LISTENER_ARGS+=(--ssl-cert "$SSL_CERT")
 run az network application-gateway listener create \
     --gateway-name "$GW" -g "$RG" -n "listener-$NAME" \
-    --frontend-port "$FPORT" --frontend-ip "$FRONTEND_IP" "${LISTENER_ARGS[@]}"
+    --frontend-port "$FPORT" --frontend-ip "$FRONTEND_IP"
 
 run az network application-gateway routing-rule create \
     --gateway-name "$GW" -g "$RG" -n "route-$NAME" \
