@@ -13,7 +13,7 @@ Choose based on security requirements and how many SQL setups you need to cover.
 
 ## The Challenge
 
-SQL instances in separate regions share a failover group FQDN (`peter-fog.database.windows.net` in our testing). Azure rewrites CNAME records at failover to point at the current primary.
+SQL instances in separate regions share a failover group FQDN (`my-fog.database.windows.net` in our testing). Azure rewrites CNAME records at failover to point at the current primary.
 
 - Confluent Cloud private DNS does not host CNAMEs, so the failover group FQDN must resolve over the Internet.
 - Existing guidance doesn't cover this service or private networking setups, so customers try several configurations and most fail.

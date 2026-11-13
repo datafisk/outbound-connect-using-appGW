@@ -4,7 +4,7 @@
 # NOT yet run against a live gateway; review the printed commands first.
 #
 # Usage: ./setup.sh <appgw-rg> <appgw-name> <fog-fqdn> <listener-port> [--apply]
-#   e.g. ./setup.sh vpc-peered-cce-se my-appgw peter-fog.database.windows.net 1433 --apply
+#   e.g. ./setup.sh my-resource-group my-appgw my-fog.database.windows.net 1433 --apply
 #
 # Use a different <listener-port> per SQL failover group sharing the same AppGW.
 
@@ -16,7 +16,7 @@ if [ $# -lt 4 ]; then
 fi
 
 RG="$1"; GW="$2"; FQDN="$3"; PORT="$4"; APPLY="$5"
-NAME="sql-${FQDN%%.*}-${PORT}"          # e.g. sql-peter-fog-1433
+NAME="sql-${FQDN%%.*}-${PORT}"          # e.g. sql-my-fog-1433
 IDLE_SECONDS="${IDLE_SECONDS:-900}"      # keep above any client keepalive/idle interval
 FRONTEND_IP="${FRONTEND_IP:-appGwPrivateFrontendIpIPv4}"
 PRIORITY="${PRIORITY:-120}"

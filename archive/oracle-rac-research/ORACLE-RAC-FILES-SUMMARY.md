@@ -87,9 +87,9 @@ oracle_rac_os_disk_size_gb = 64
 
 # Network Configuration (new subnets in existing VNet)
 oracle_rac_create_subnets = true
-oracle_rac_public_subnet_prefix = "172.200.20.0/27"        # 32 IPs
-oracle_rac_private_subnet_prefix = "172.200.21.0/27"       # 32 IPs  
-oracle_rac_interconnect_subnet_prefix = "172.200.22.0/27"  # 32 IPs
+oracle_rac_public_subnet_prefix = "172.16.20.0/27"        # 32 IPs
+oracle_rac_private_subnet_prefix = "172.16.21.0/27"       # 32 IPs  
+oracle_rac_interconnect_subnet_prefix = "172.16.22.0/27"  # 32 IPs
 
 # Security (no public IPs, use Bastion)
 oracle_rac_create_nsg = true
@@ -171,7 +171,7 @@ terraform apply
 
 ```bash
 # Update terraform.tfvars with SCAN IP
-oracle_backend_targets = ["172.200.20.16"]
+oracle_backend_targets = ["172.16.20.16"]
 
 # Apply changes
 terraform apply

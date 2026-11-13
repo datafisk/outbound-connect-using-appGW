@@ -32,7 +32,7 @@ echo "Gathering configuration..."
 # Failover Group FQDN (from terraform or manual input)
 FAILOVER_FQDN=$(get_tf_output "failover_group_fqdn")
 if [ -z "$FAILOVER_FQDN" ]; then
-    read -p "Enter Failover Group FQDN (e.g., peter-fog.database.windows.net): " FAILOVER_FQDN
+    read -p "Enter Failover Group FQDN (e.g., my-fog.database.windows.net): " FAILOVER_FQDN
 fi
 
 # Database name

@@ -120,11 +120,11 @@ SQL> SELECT server_name, status FROM DBA_XSTREAM_OUTBOUND;
 ```bash
 # Get SCAN IP
 ssh confluent@${NODE1_IP} "cat /etc/hosts | grep rac-scan"
-# Should show: 172.200.20.16    rac-scan.internal         rac-scan
+# Should show: 172.16.20.16    rac-scan.internal         rac-scan
 
 # Update terraform.tfvars
 cat >> terraform.tfvars <<EOF
-oracle_backend_targets = ["172.200.20.16"]
+oracle_backend_targets = ["172.16.20.16"]
 EOF
 
 # Apply changes
@@ -264,7 +264,7 @@ END;
 ```bash
 # Check backend health
 az network application-gateway show-backend-health \
-    -g vpc-peered-cce-se \
+    -g my-resource-group \
     -n confluent-pl-appgw \
     --query "backendAddressPools[?name=='oracle-backend-pool']"
 
@@ -292,15 +292,15 @@ sqlplus sys/<ORACLE_PASSWORD>@rac-scan:1521/RACPDB1 as sysdba
 
 | Component | IP Address | Purpose |
 |-----------|------------|---------|
-| Node 1 Public | 172.200.20.10 | SSH, client connections |
-| Node 2 Public | 172.200.20.11 | SSH, client connections |
-| Node 1 Private | 172.200.21.10 | Cluster heartbeat |
-| Node 2 Private | 172.200.21.11 | Cluster heartbeat |
-| Node 1 Interconnect | 172.200.22.10 | Cache Fusion |
-| Node 2 Interconnect | 172.200.22.11 | Cache Fusion |
-| Node 1 VIP | 172.200.20.14 | Failover VIP |
-| Node 2 VIP | 172.200.20.15 | Failover VIP |
-| SCAN | 172.200.20.16 | Client access point |
+| Node 1 Public | 172.16.20.10 | SSH, client connections |
+| Node 2 Public | 172.16.20.11 | SSH, client connections |
+| Node 1 Private | 172.16.21.10 | Cluster heartbeat |
+| Node 2 Private | 172.16.21.11 | Cluster heartbeat |
+| Node 1 Interconnect | 172.16.22.10 | Cache Fusion |
+| Node 2 Interconnect | 172.16.22.11 | Cache Fusion |
+| Node 1 VIP | 172.16.20.14 | Failover VIP |
+| Node 2 VIP | 172.16.20.15 | Failover VIP |
+| SCAN | 172.16.20.16 | Client access point |
 
 ## Default Credentials
 

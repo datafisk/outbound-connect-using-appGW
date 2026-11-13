@@ -550,11 +550,11 @@ Verify column data types:
 Increase timeout for long-running queries:
 
 ```hcl
-backend_settings {
-  name     = "oracle_1521"
-  port     = 1521
-  protocol = "Tcp"
-  timeout  = 120  # Increase to 120 seconds if queries are slow
+backend {
+  name               = "oracle_1521"
+  port               = 1521
+  protocol           = "Tcp"
+  timeout_in_seconds = 120  # Increase to 120 seconds if queries are slow
 }
 ```
 

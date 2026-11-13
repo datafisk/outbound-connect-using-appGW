@@ -1,5 +1,7 @@
 # Single-Instance RAC Live Testing - Connector Behavior Results
 
+> **Earlier lab (June 2026).** This document records a previous round of testing on an earlier RAC deployment. Host names, IP addresses and identifiers are placeholders or examples. It is kept as evidence for the `ORA-12514` behaviour when a service exists on only one node. For current per-connector results on the OCI RAC see [CONNECTOR-COMPARISON.md](./CONNECTOR-COMPARISON.md).
+
 ## Test Overview
 
 **Objective:** Test actual connector behavior in single-instance RAC scenario by pausing and resuming connector to force new database connections.
@@ -13,9 +15,9 @@
 ## Pre-Test State
 
 **From Azure VM Testing (2026-06-04):**
-- racnode1-vip (10.99.1.165): 50% ORA-12514, 50% timeout
-- racnode2-vip (10.99.1.84): 100% ORA-12514
-- AppGW (172.200.9.19): 70% ORA-12514, 30% connection closed
+- racnode1-vip (10.0.1.165): 50% ORA-12514, 50% timeout
+- racnode2-vip (10.0.1.84): 100% ORA-12514
+- AppGW (172.16.9.19): 70% ORA-12514, 30% connection closed
 
 **Connector Status Before Test:**
 ```
@@ -25,7 +27,7 @@ Task State: RUNNING
 
 **AppGW Configuration:**
 ```
-Backend Pool: [10.99.1.165, 10.99.1.84]
+Backend Pool: [10.0.1.165, 10.0.1.84]
 Both VIPs in pool despite ORA-12514 on backends
 ```
 
@@ -314,14 +316,14 @@ WHERE service_name = '<service>';
 **Commands Executed:**
 ```bash
 # SSH from jump host to racnode1
-ssh opc@10.99.1.108
+ssh opc@10.0.1.108
 
 # As oracle user, register service on both RAC instances
-srvctl modify service -d RACDB_86f_phx \
+srvctl modify service -d <db_unique_name> \
   -s xstreampdb \
   -preferred RACDB1,RACDB2
 
-srvctl start service -d RACDB_86f_phx -s xstreampdb
+srvctl start service -d <db_unique_name> -s xstreampdb
 ```
 
 **Verification:**
@@ -338,7 +340,7 @@ AND s.name = 'xstreampdb';
 - ✅ Service registered on both RAC instances
 - ✅ Both VIPs now accept connections without ORA-12514
 - ✅ Connector resumed successfully
-- ✅ Status: RUNNING with connector host configured as `petertestnodes.peterglab.oraclevcn.com`
+- ✅ Status: RUNNING with connector host configured as `<subnet-label>.<vcn-label>.oraclevcn.com`
 
 ---
 

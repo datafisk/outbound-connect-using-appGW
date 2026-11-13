@@ -19,7 +19,7 @@ This Terraform module deploys a 2-node Oracle Real Application Clusters (RAC) da
 │  (new, or an existing one with a DRG/VPN towards Azure)     │
 │                                                              │
 │  ┌────────────────────────────────────────────────────┐     │
-│  │ Client Subnet (new, or existing, e.g. 10.99.1.0/24) │     │
+│  │ Client Subnet (new, or existing, e.g. 10.0.1.0/24) │     │
 │  │                                                      │     │
 │  │  ┌───────────────────┐   ┌───────────────────┐      │     │
 │  │  │ RAC Node 1        │   │ RAC Node 2        │      │     │

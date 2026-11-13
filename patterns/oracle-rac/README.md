@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Connect Confluent Cloud fully managed JDBC Source or XStream connectors to Oracle RAC clusters with high availability using Azure Application Gateway to bypass SCAN listener redirects. AppGW load balances across the RAC node VIPs directly (~$150-180/month for AppGW + Oracle compute costs). XStream node-failure behaviour was tested on a 2-node RAC: no data loss, but recovery after some failures is manual (see [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)). The LogMiner-based Oracle CDC Source connector was tested in the same scenarios and recovered without manual action (see [docs/HA-TESTING-LOGMINER.md](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md)).
+Connect Confluent Cloud fully managed Oracle connectors (XStream CDC, LogMiner-based CDC, or JDBC polling) to Oracle RAC clusters with high availability using Azure Application Gateway to bypass SCAN listener redirects. AppGW load balances across the RAC node VIPs directly (~$150-180/month for AppGW + Oracle compute costs). XStream node-failure behaviour was tested on a 2-node RAC: no data loss, but recovery after some failures is manual (see [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md)). The LogMiner-based Oracle CDC Source connector and the JDBC Source connector were tested in the same scenarios and recovered without manual action (see [HA-TESTING-LOGMINER.md](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md), [HA-TESTING-JDBC.md](../oracle-rac-jdbc/docs/HA-TESTING-JDBC.md) and the [comparison](./docs/CONNECTOR-COMPARISON.md)).
 
 ## Overview
 
@@ -10,7 +10,7 @@ This pattern demonstrates how to deploy Confluent Cloud fully managed connectors
 
 - **High Availability**: Automatic failover across RAC nodes
 - **SCAN Bypass**: Direct connection to the RAC node VIPs via Application Gateway (no SCAN redirect)
-- **XStream or JDBC**: Support for both connector types
+- **Three connector types**: XStream CDC, LogMiner-based CDC and JDBC polling, each tested
 - **Multi-Cloud**: Works with Oracle Cloud Infrastructure (OCI), Azure VMs, or on-premises RAC
 - **Private Connectivity**: Via Confluent Egress Access Points
 
@@ -48,7 +48,7 @@ Oracle RAC presents unique challenges for Confluent Cloud connectors:
 │  Backend Pool: [<node1-vip>, <node2-vip>]               │
 │  Health Probe: TCP port 1521                             │
 │  Listener: TCP 1521                                      │
-│  Private IP: 172.200.X.X                                 │
+│  Private IP: 172.16.X.X                                 │
 └──────────────────────────────────────────────────────────┘
                      │
                      │ Private Link
@@ -57,7 +57,7 @@ Oracle RAC presents unique challenges for Confluent Cloud connectors:
 │ Confluent Cloud                                           │
 │                                                           │
 │  Egress Access Point → AppGW                             │
-│  Connector: JDBC Source or XStream                       │
+│  Connector: XStream, LogMiner CDC or JDBC Source         │
 │  Connection: AppGW IP:1521                               │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -208,13 +208,11 @@ The gateway, egress and RAC setup in this folder are shared. Each connector has 
 
 Side by side: [docs/CONNECTOR-COMPARISON.md](./docs/CONNECTOR-COMPARISON.md).
 
-## Testing High Availability (XStream)
+## Testing High Availability
 
-> The HA results in this repo are for the **XStream CDC connector only**, not the JDBC Source connector.
+Each connector has its own HA results and procedure: [XStream](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md), [LogMiner](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md), [JDBC](../oracle-rac-jdbc/docs/HA-TESTING-JDBC.md). The quick check below is the XStream one; the others are in their own documents.
 
-See [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md) for complete HA testing procedures.
-
-**Quick HA Test:**
+**Quick HA Test (XStream):**
 
 1. **Verify initial state:**
 ```sql
@@ -279,11 +277,11 @@ Lower cost but requires manual intervention during RAC node failures.
 
 - [docs/QUICKSTART.md](./docs/QUICKSTART.md) - Step-by-step deployment guide
 - [docs/APPGW-SETUP.md](./docs/APPGW-SETUP.md) - Application Gateway configuration
-- [docs/HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md) - High availability testing procedures
-- [docs/XSTREAM-SETUP.md](../oracle-rac-xstream/docs/XSTREAM-SETUP.md) - XStream CDC connector setup
-- [docs/HA-TESTING-LOGMINER.md](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md) - High availability testing, Oracle CDC Source (LogMiner) connector
-- [docs/LOGMINER-SETUP.md](../oracle-rac-logminer/docs/LOGMINER-SETUP.md) - Oracle CDC Source (LogMiner) connector setup
-- [docs/SINGLE-INSTANCE-FINDINGS.md](./docs/SINGLE-INSTANCE-FINDINGS.md) - Single-instance RAC analysis
+- [docs/CONNECTOR-COMPARISON.md](./docs/CONNECTOR-COMPARISON.md) - XStream, LogMiner and JDBC side by side
+- [XSTREAM-SETUP.md](../oracle-rac-xstream/docs/XSTREAM-SETUP.md) and [HA-TESTING-XSTREAM.md](../oracle-rac-xstream/docs/HA-TESTING-XSTREAM.md) - XStream CDC connector
+- [LOGMINER-SETUP.md](../oracle-rac-logminer/docs/LOGMINER-SETUP.md) and [HA-TESTING-LOGMINER.md](../oracle-rac-logminer/docs/HA-TESTING-LOGMINER.md) - Oracle CDC Source (LogMiner) connector
+- [JDBC-SETUP.md](../oracle-rac-jdbc/docs/JDBC-SETUP.md) and [HA-TESTING-JDBC.md](../oracle-rac-jdbc/docs/HA-TESTING-JDBC.md) - Oracle Database (JDBC) Source connector
+- [docs/SINGLE-INSTANCE-FINDINGS.md](./docs/SINGLE-INSTANCE-FINDINGS.md) - Service on one node only: analysis, with [test results](./docs/SINGLE-INSTANCE-TEST-RESULTS.md), [Azure VM results](./docs/AZURE-VM-TESTING.md) and [test plan](./docs/TEST-PLAN.md) (earlier lab)
 - [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) - Common issues
 
 ## Key Learnings
@@ -305,19 +303,15 @@ Earlier versions of these docs said `REMOTE_LISTENER` must be an FQDN. That was 
 
 The AppGW distributes new TCP connections across healthy backends. In the OCI retest, 10/10 connections through the gateway succeeded and landed on both RACDB1 and RACDB2. Connections are long-lived, so balance is only evaluated when a connection is opened.
 
-### Single-Instance RAC is Viable for Testing
+### Service on One Node Only (RAC One Node, single-instance service)
 
-You can run a "RAC" cluster with just one node for development/testing. This simplifies infrastructure while maintaining the same connection patterns.
+If the database service is registered on only one node (for example RAC One Node, or a service with one preferred instance), the AppGW pool must hold only that node's VIP, or the service must be made available on all pooled nodes. With both VIPs in the pool, roughly half of the new connections fail with `ORA-12514`, and the connectors' configuration validation fails the same way. A genuine one-node cluster should need no special handling, since the pool then has one target (this was not tested separately; RAC One Node was). See [docs/SINGLE-INSTANCE-FINDINGS.md](./docs/SINGLE-INSTANCE-FINDINGS.md) and the per-connector results.
 
-See [docs/SINGLE-INSTANCE-FINDINGS.md](./docs/SINGLE-INSTANCE-FINDINGS.md) for details.
+### ORA-12514 and Node Failures
 
-### ORA-12514 During Failover
+`ORA-12514: TNS:listener does not currently know of service requested` means a node's listener is up but the service is not registered on it. In the tests it appeared in two situations: a service that exists on only one node of the pool (persistent, see above), and a short window while a restarted node's listener is up before its instances have registered the service (transient). A node that is down gives connection timeouts or resets, not `ORA-12514`.
 
-When a RAC node fails, active connections may get `ORA-12514: TNS:listener does not currently know of service requested`.
-
-**Cause**: Application tried to reconnect to failed node before AppGW health probe removed it.
-
-**Solution**: Configure AppGW health probe with faster intervals (5-10 seconds) and connector retry logic.
+The AppGW's TCP probe only tests the connect, so it cannot detect either case. Behaviour of each connector during node failures, including how long reconnects took, is in the per-connector HA results and the [comparison](./docs/CONNECTOR-COMPARISON.md).
 
 ## Known Limitations
 
@@ -342,8 +336,9 @@ When a RAC node fails, active connections may get `ORA-12514: TNS:listener does 
 ## References
 
 - [Oracle RAC Documentation](https://docs.oracle.com/en/database/oracle/oracle-database/19/racad/)
-- [Confluent JDBC Source Connector](https://docs.confluent.io/cloud/current/connectors/cc-jdbc-source.html)
-- [Confluent Oracle CDC Source (XStream)](https://docs.confluent.io/cloud/current/connectors/cc-oracle-cdc-source.html)
+- [Confluent Oracle Database Source (JDBC)](https://docs.confluent.io/cloud/current/connectors/cc-oracle-db-source.html)
+- [Confluent Oracle CDC Source (LogMiner)](https://docs.confluent.io/cloud/current/connectors/cc-oracle-cdc-source.html)
+- [Confluent Oracle XStream CDC Source](https://docs.confluent.io/cloud/current/connectors/cc-oracle-xstream-cdc-source/cc-oracle-xstream-cdc-source-features.html)
 - [Azure Application Gateway](https://docs.microsoft.com/azure/application-gateway/)
 
 ## Support

@@ -5,10 +5,10 @@
 # so other listeners on the same gateway are untouched.
 #
 # Usage: ./setup.sh <appgw-rg> <appgw-name> <listener-port> <node-vip> [<node-vip> ...] [--apply]
-#   e.g. ./setup.sh vpc-peered-cce-se my-appgw 1521 10.99.1.10 10.99.1.11 --apply
+#   e.g. ./setup.sh my-resource-group my-appgw 1521 10.0.1.10 10.0.1.11 --apply
 #
 # TLS/SNI listener (as on a gateway that terminates TLS for oracle.<domain>): set LISTENER_HOST
-#   and SSL_CERT, e.g.  LISTENER_HOST=oracle.peter.com SSL_CERT=appgw-server ./setup.sh ...
+#   and SSL_CERT, e.g.  LISTENER_HOST=oracle.example.com SSL_CERT=appgw-server ./setup.sh ...
 #   Without them a plain TCP listener is created. Listeners sharing a port must all be the same
 #   type, so a plain TCP listener cannot be added on a port that already has a TLS listener.
 # NOT yet run against a live gateway; read the printed commands before applying.

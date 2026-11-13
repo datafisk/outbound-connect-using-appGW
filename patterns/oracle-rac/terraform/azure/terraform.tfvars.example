@@ -41,17 +41,17 @@ kafka_api_secret = "KAFKA_API_SECRET"
 
 # Connection hostname
 # Option 1: Use SCAN name with Confluent DNS wildcard
-oracle_connection_host = "racnode-scan.petertestnodes.peterglab.oraclevcn.com"
+oracle_connection_host = "racnode-scan.<subnet-label>.<vcn-label>.oraclevcn.com"
 
 # Option 2: Use AppGW IP directly if DNS wildcard covers it
-# oracle_connection_host = "172.200.9.19"
+# oracle_connection_host = "172.16.9.19"
 
 oracle_connection_port = 1521
 oracle_username        = "jdbc_connector"
 oracle_password        = "YourSecurePassword123#"
 
 # Database service name (fully qualified: pdb_name.domain)
-oracle_db_name = "xstreampdb.petertestnodes.peterglab.oraclevcn.com"
+oracle_db_name = "xstreampdb.<subnet-label>.<vcn-label>.oraclevcn.com"
 
 # SSL/TLS Configuration
 oracle_ssl_server_dn_match = false  # Set to false for self-signed certs or when using IP

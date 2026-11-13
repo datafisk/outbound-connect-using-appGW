@@ -120,7 +120,7 @@ Validated on a 2-node Oracle 19c RAC (OCI DB System) behind an Azure Application
 ```
 Confluent connector
   -> Egress Access Point -> DNS name (egress DNS record) -> AppGW private frontend :1521
-  -> AppGW TCP backend pool = node VIPs (e.g. 10.99.1.167, 10.99.1.38)
+  -> AppGW TCP backend pool = node VIPs (e.g. 10.0.1.167, 10.0.1.38)
   -> node listener on the VIP -> database service (registered on EVERY instance)
 ```
 

@@ -1,5 +1,7 @@
 # Single-Instance Database on 2-Node RAC Cluster - Test Findings
 
+> **Earlier lab (June 2026).** This document records a previous round of testing on an earlier RAC deployment. Host names, IP addresses and identifiers are placeholders or examples. It is kept as evidence for the `ORA-12514` behaviour when a service exists on only one node. For current per-connector results on the OCI RAC see [CONNECTOR-COMPARISON.md](./CONNECTOR-COMPARISON.md).
+
 > **Terminology:** "single-instance" here means a 2-node RAC where the database **service is registered on only one node**. It does not mean a one-node cluster. The AppGW pattern requires the service on every node in the backend pool; this document covers what happens when it is not.
 
 ## Customer Scenario

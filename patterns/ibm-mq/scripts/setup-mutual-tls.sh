@@ -11,7 +11,7 @@
 #   ./setup-mutual-tls.sh [dns_domain]
 #
 # Example:
-#   ./setup-mutual-tls.sh ibmmq2.peter.com
+#   ./setup-mutual-tls.sh ibmmq.example.com
 #
 # Prerequisites:
 # - IBM MQ installed on Ubuntu
@@ -59,7 +59,7 @@ echo ""
 if [ "$DNS_DOMAIN" = "mq-server.local" ]; then
   echo "⚠️  WARNING: Using default DNS domain 'mq-server.local'"
   echo "   For Confluent connector, this should match your dns_domain in terraform.tfvars"
-  echo "   Usage: $0 ibmmq2.peter.com"
+  echo "   Usage: $0 ibmmq.example.com"
   echo ""
 fi
 

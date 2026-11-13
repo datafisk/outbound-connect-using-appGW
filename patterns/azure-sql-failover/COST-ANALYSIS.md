@@ -190,9 +190,9 @@ Configure SQL databases to auto-pause after 60 minutes of inactivity:
 
 ```bash
 az sql db update \
-  --name peter-test-db \
-  --server pg-uswest2 \
-  --resource-group petergustafss-test \
+  --name my-test-db \
+  --server sql-primary-westus2 \
+  --resource-group my-resource-group \
   --auto-pause-delay 60
 ```
 
@@ -204,9 +204,9 @@ If workload permits, use 1 vCore instead of 2:
 
 ```bash
 az sql db update \
-  --name peter-test-db \
-  --server pg-uswest2 \
-  --resource-group petergustafss-test \
+  --name my-test-db \
+  --server sql-primary-westus2 \
+  --resource-group my-resource-group \
   --capacity 1
 ```
 

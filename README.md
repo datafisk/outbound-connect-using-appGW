@@ -11,7 +11,10 @@ Everything specific to a connector (architecture, setup, scripts, costs, testing
 | [azure-sql-failover](./patterns/azure-sql-failover/) | Azure SQL failover groups: four connectivity options (public, restricted public, dual EAP, EAP + AppGW) |
 | [ibm-mq](./patterns/ibm-mq/) | IBM MQ source with mutual TLS and AppGW idle-timeout/heartbeat alignment |
 | [tableflow-azure](./patterns/tableflow-azure/) | Tableflow to ADLS Gen2 over Private Link via AppGW and NGINX or NGINXaaS SNI routing |
-| [oracle-rac](./patterns/oracle-rac/) | Oracle RAC (JDBC / XStream) via AppGW, bypassing SCAN VIPs; OCI and Azure test environments |
+| [oracle-rac](./patterns/oracle-rac/) | Oracle RAC via AppGW, bypassing SCAN VIPs: shared gateway/egress setup, OCI Terraform, connector comparison |
+| [oracle-rac-xstream](./patterns/oracle-rac-xstream/) | Oracle XStream CDC Source on RAC: setup and HA test results |
+| [oracle-rac-logminer](./patterns/oracle-rac-logminer/) | Oracle CDC Source (LogMiner) on RAC: setup and HA test results |
+| [oracle-rac-jdbc](./patterns/oracle-rac-jdbc/) | Oracle Database (JDBC) Source on RAC: setup and HA test results |
 
 ## Structure
 

@@ -15,15 +15,15 @@ provider "azapi" {}
 # Get existing AppGW configuration
 data "azapi_resource" "appgw" {
   type      = "Microsoft.Network/applicationGateways@2023-11-01"
-  name      = "peter-g-mqtt"
-  parent_id = "/subscriptions/54ff81a0-e7f6-4919-9053-4cdd1c5f5ae1/resourceGroups/vpc-peered-cce-se"
+  name      = "my-appgw"
+  parent_id = "/subscriptions/54ff81a0-e7f6-4919-9053-4cdd1c5f5ae1/resourceGroups/my-resource-group"
 }
 
 # Update AppGW with new routing rule
 resource "azapi_update_resource" "add_oracle_rac_rule" {
   type      = "Microsoft.Network/applicationGateways@2023-11-01"
-  name      = "peter-g-mqtt"
-  parent_id = "/subscriptions/54ff81a0-e7f6-4919-9053-4cdd1c5f5ae1/resourceGroups/vpc-peered-cce-se"
+  name      = "my-appgw"
+  parent_id = "/subscriptions/54ff81a0-e7f6-4919-9053-4cdd1c5f5ae1/resourceGroups/my-resource-group"
 
   body = jsonencode({
     properties = {

@@ -5,10 +5,10 @@ A reusable Confluent Cloud EAP points at an Azure Application Gateway in your VN
 ## How it works
 
 ```
-Connector (connection.host = peter-fog.database.windows.net, port 1433)
-  → Confluent egress DNS: peter-fog.database.windows.net → EAP
+Connector (connection.host = my-fog.database.windows.net, port 1433)
+  → Confluent egress DNS: my-fog.database.windows.net → EAP
   → EAP → Application Gateway private frontend (TCP listener)
-  → backend pool: peter-fog.database.windows.net
+  → backend pool: my-fog.database.windows.net
        resolved in your VNet: CNAME chain → privatelink.database.windows.net A record
   → private endpoint of the current primary (West US 2 or East US)
 ```
@@ -57,5 +57,5 @@ At failover Azure updates the CNAME chain; the gateway re-resolves the backend a
 
 - Tune the idle timeout to be longer than the connector's idle/keepalive interval (see the [IBM MQ pattern](../../../ibm-mq/docs/HEARTBEAT-CONFIG.md) for why).
 - Source-IP filtering on this path is done with an NSG on the AppGW subnet. Traffic arriving via Private Link is source-NATed, so allow the Private Link IP configuration subnet, not Confluent's IPs.
-- A custom TCP health probe can be defined in Terraform (`probe` block, see [../../../oracle-rac/egress-access-points/appgw-scan/appgw.tf](../../../oracle-rac/egress-access-points/appgw-scan/appgw.tf) for the syntax). Probe interval and threshold set how quickly a failover is picked up.
+- A custom TCP health probe can be defined in Terraform (`probe` block, see the example in [APPGW-SETUP.md](../../../oracle-rac/docs/APPGW-SETUP.md#22-configure-appgw-backend-pool) for the syntax). Probe interval and threshold set how quickly a failover is picked up.
 - Test results: failover and failback were validated end to end (records written to the primary in both regions, connector stayed RUNNING).
